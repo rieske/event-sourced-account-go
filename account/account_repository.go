@@ -1,5 +1,7 @@
 package account
 
+import "errors"
+
 type AccountRepository struct {
 	store *eventStore
 }
@@ -8,7 +10,16 @@ func NewAccountRepository(es eventStore) *AccountRepository {
 	return &AccountRepository{&es}
 }
 
+func (r *AccountRepository) aggregateExists(id AggregateId) bool {
+	events := (*r.store).Events(id, 0)
+	return len(events) != 0
+}
+
 func (r *AccountRepository) Open(id AggregateId, ownerId OwnerId) error {
+	if r.aggregateExists(id) {
+		return errors.New("account already exists")
+	}
+
 	es := NewEventStream(*r.store)
 	a := account{}
 	event, err := a.Open(id, ownerId)

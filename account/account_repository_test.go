@@ -22,8 +22,7 @@ func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 	expectNoError(t, err)
 
 	err = repo.Open(id, ownerId)
-	// FIXME: we want duplicate account error here
-	expectError(t, err, "Concurrent modification error")
+	expectError(t, err, "account already exists")
 }
 
 func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
