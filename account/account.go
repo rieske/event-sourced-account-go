@@ -83,6 +83,16 @@ func (a *account) Withdraw(amount int64) (Event, error) {
 	return event, nil
 }
 
+func (a *account) Close() (Event, error) {
+	if a.balance != 0 {
+		return nil, errors.New("Balance outstanding")
+	}
+
+	event := AccountClosedEvent{}
+	a.applyAccountClosed(event)
+	return event, nil
+}
+
 func (a *account) applyAccountOpened(event AccountOpenedEvent) {
 	a.id = &event.accountId
 	a.ownerId = &event.ownerId
@@ -96,6 +106,10 @@ func (a *account) applyMoneyDeposited(event MoneyDepositedEvent) {
 
 func (a *account) applyMoneyWithdrawn(event MoneyWithdrawnEvent) {
 	a.balance = event.balance
+}
+
+func (a *account) applyAccountClosed(event AccountClosedEvent) {
+	a.open = false
 }
 
 type Event interface {
@@ -132,6 +146,13 @@ type MoneyWithdrawnEvent struct {
 
 func (e MoneyWithdrawnEvent) apply(account *account) {
 	account.applyMoneyWithdrawn(e)
+}
+
+type AccountClosedEvent struct {
+}
+
+func (e AccountClosedEvent) apply(account *account) {
+	account.applyAccountClosed(e)
 }
 
 /*func (e AccountOpenedEvent) Serialize() []byte {

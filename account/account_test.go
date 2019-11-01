@@ -163,6 +163,36 @@ func TestRequireOpenAccountForWithdrawal(t *testing.T) {
 	expectNoEvent(t, event)
 }
 
+func TestCloseAccount(t *testing.T) {
+	a := account{}
+
+	accountId := AggregateId{1}
+	ownerId := OwnerId{42}
+	_, _ = a.Open(accountId, ownerId)
+
+	event, err := a.Close()
+
+	expectNoError(t, err)
+	expectEvent(t, event)
+	if a.open != false {
+		t.Error("account should be closed")
+	}
+}
+
+func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
+	a := account{}
+
+	accountId := AggregateId{1}
+	ownerId := OwnerId{42}
+	_, _ = a.Open(accountId, ownerId)
+	_, _ = a.Deposit(10)
+
+	event, err := a.Close()
+
+	expectError(t, err, "Balance outstanding")
+	expectNoEvent(t, event)
+}
+
 func TestApplyEvents(t *testing.T) {
 	a := account{}
 
