@@ -74,15 +74,15 @@ func TestCommitInSequence(t *testing.T) {
 	assertEqual(t, 0, len(es.uncomittedEvents))
 	assertEqual(t, 2, len(store.events))
 
-	secOpenedEvent := store.events[0]
-	assertEqual(t, secOpenedEvent.event, accountOpenedEvent)
-	assertEqual(t, secOpenedEvent.aggregateId, id)
-	assertEqual(t, secOpenedEvent.seq, 1)
+	seqOpenedEvent := store.events[0]
+	assertEqual(t, seqOpenedEvent.event, accountOpenedEvent)
+	assertEqual(t, seqOpenedEvent.aggregateId, id)
+	assertEqual(t, seqOpenedEvent.seq, 1)
 
-	secDepositedEvent := store.events[1]
-	assertEqual(t, secDepositedEvent.event, depositEvent)
-	assertEqual(t, secDepositedEvent.aggregateId, id)
-	assertEqual(t, secDepositedEvent.seq, 2)
+	seqDepositedEvent := store.events[1]
+	assertEqual(t, seqDepositedEvent.event, depositEvent)
+	assertEqual(t, seqDepositedEvent.aggregateId, id)
+	assertEqual(t, seqDepositedEvent.seq, 2)
 }
 
 func TestCommitOutOfSequence(t *testing.T) {
