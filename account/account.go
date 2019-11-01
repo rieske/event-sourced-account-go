@@ -53,7 +53,7 @@ func (a *account) Deposit(amount int64) (Event, error) {
 		return nil, errors.New("Can not deposit negative amount")
 	}
 	if !a.open {
-		return nil, errors.New("account not open")
+		return nil, errors.New("Account not open")
 	}
 	if amount == 0 {
 		return nil, nil
@@ -61,6 +61,25 @@ func (a *account) Deposit(amount int64) (Event, error) {
 
 	event := MoneyDepositedEvent{amount, a.balance + amount}
 	a.applyMoneyDeposited(event)
+	return event, nil
+}
+
+func (a *account) Withdraw(amount int64) (Event, error) {
+	if amount < 0 {
+		return nil, errors.New("Can not withdraw negative amount")
+	}
+	if !a.open {
+		return nil, errors.New("Account not open")
+	}
+	if amount > a.balance {
+		return nil, errors.New("Insufficient balance")
+	}
+	if amount == 0 {
+		return nil, nil
+	}
+
+	event := MoneyWithdrawnEvent{amount, a.balance - amount}
+	a.applyMoneyWithdrawn(event)
 	return event, nil
 }
 
@@ -72,6 +91,10 @@ func (a *account) applyAccountOpened(event AccountOpenedEvent) {
 }
 
 func (a *account) applyMoneyDeposited(event MoneyDepositedEvent) {
+	a.balance = event.balance
+}
+
+func (a *account) applyMoneyWithdrawn(event MoneyWithdrawnEvent) {
 	a.balance = event.balance
 }
 
@@ -100,6 +123,15 @@ type MoneyDepositedEvent struct {
 
 func (e MoneyDepositedEvent) apply(account *account) {
 	account.applyMoneyDeposited(e)
+}
+
+type MoneyWithdrawnEvent struct {
+	amountWithdrawn int64
+	balance         int64
+}
+
+func (e MoneyWithdrawnEvent) apply(account *account) {
+	account.applyMoneyWithdrawn(e)
 }
 
 /*func (e AccountOpenedEvent) Serialize() []byte {
