@@ -6,6 +6,8 @@ type Repository struct {
 	store *eventStore
 }
 
+type accountOperation func(*account) (Event, error)
+
 func NewAccountRepository(es eventStore) *Repository {
 	return &Repository{&es}
 }
@@ -32,6 +34,13 @@ func (r *Repository) Open(id AggregateId, ownerId OwnerId) error {
 }
 
 func (r *Repository) Deposit(id AggregateId, amount int64) error {
+	deposit := func(a *account) (Event, error) {
+		return a.Deposit(amount)
+	}
+	return r.doWithAccount(id, deposit)
+}
+
+func (r *Repository) doWithAccount(id AggregateId, operation accountOperation) error {
 	es := NewEventStream(*r.store)
 
 	a, err := es.replay(id)
@@ -39,7 +48,7 @@ func (r *Repository) Deposit(id AggregateId, amount int64) error {
 		return err
 	}
 
-	event, err := a.Deposit(amount)
+	event, err := operation(a)
 	if err != nil {
 		return err
 	}
