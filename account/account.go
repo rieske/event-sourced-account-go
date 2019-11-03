@@ -15,7 +15,7 @@ type account struct {
 	open    bool
 }
 
-type AccountSnapshot struct {
+type Snapshot struct {
 	id      AggregateId
 	ownerId OwnerId
 	balance int64
@@ -30,12 +30,12 @@ func (a account) Id() AggregateId {
 	return *a.id
 }
 
-func (a *account) Snapshot() (*AccountSnapshot, error) {
+func (a *account) Snapshot() (*Snapshot, error) {
 	if !a.open {
 		return nil, errors.New("account not open")
 	}
 
-	return &AccountSnapshot{*a.id, *a.ownerId, a.balance, a.open}, nil
+	return &Snapshot{*a.id, *a.ownerId, a.balance, a.open}, nil
 }
 
 func (a *account) Open(accountId AggregateId, ownerId OwnerId) (Event, error) {
