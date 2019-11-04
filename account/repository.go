@@ -12,11 +12,6 @@ func NewAccountRepository(es eventStore) *Repository {
 	return &Repository{&es}
 }
 
-func (r *Repository) aggregateExists(id AggregateId) bool {
-	events := (*r.store).Events(id, 0)
-	return len(events) != 0
-}
-
 func (r *Repository) Open(id AggregateId, ownerId OwnerId) error {
 	a := r.newAggregate(id)
 	return a.operate(func(a *account) (Event, error) {
@@ -29,6 +24,11 @@ func (r *Repository) Deposit(id AggregateId, amount int64) error {
 	return a.operate(func(a *account) (Event, error) {
 		return a.Deposit(amount)
 	})
+}
+
+func (r *Repository) aggregateExists(id AggregateId) bool {
+	events := (*r.store).Events(id, 0)
+	return len(events) != 0
 }
 
 type aggregate struct {
