@@ -30,12 +30,8 @@ func (a account) Id() AggregateId {
 	return *a.id
 }
 
-func (a *account) Snapshot() (*Snapshot, error) {
-	if !a.open {
-		return nil, errors.New("account not open")
-	}
-
-	return &Snapshot{*a.id, *a.ownerId, a.balance, a.open}, nil
+func (a *account) Snapshot() Snapshot {
+	return Snapshot{*a.id, *a.ownerId, a.balance, a.open}
 }
 
 func (a *account) Open(accountId AggregateId, ownerId OwnerId) (Event, error) {

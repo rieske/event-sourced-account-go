@@ -57,10 +57,9 @@ func TestCommitInSequence(t *testing.T) {
 	es := NewEventStream(&store)
 
 	id := AggregateId{1}
-	ownerId := OwnerId{2}
 
 	a := account{}
-	accountOpenedEvent, err := a.Open(id, ownerId)
+	accountOpenedEvent, err := a.Open(id, OwnerId{2})
 	expectNoError(t, err)
 	es.append(accountOpenedEvent, id)
 
@@ -91,10 +90,9 @@ func TestCommitOutOfSequence(t *testing.T) {
 	es := NewEventStream(&store)
 
 	id := AggregateId{1}
-	ownerId := OwnerId{2}
 
 	a := account{}
-	accountOpenedEvent, err := a.Open(id, ownerId)
+	accountOpenedEvent, err := a.Open(id, OwnerId{2})
 	expectNoError(t, err)
 	es.append(accountOpenedEvent, id)
 	err = es.commit()

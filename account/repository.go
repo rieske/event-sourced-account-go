@@ -12,6 +12,15 @@ func NewAccountRepository(es eventStore) *Repository {
 	return &Repository{&es}
 }
 
+func (r *Repository) Query(id AggregateId) (*Snapshot, error) {
+	a := r.loadAggregate(id)
+	if a.err != nil {
+		return nil, a.err
+	}
+	snapshot := a.acc.Snapshot()
+	return &snapshot, nil
+}
+
 func (r *Repository) Open(id AggregateId, ownerId OwnerId) error {
 	a := r.newAggregate(id)
 	return a.operate(func(a *account) (Event, error) {
