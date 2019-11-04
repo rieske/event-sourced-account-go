@@ -6,7 +6,7 @@ type Repository struct {
 	store *eventStore
 }
 
-type accountOperation func(*account) (Event, error)
+type transaction func(*account) (Event, error)
 
 func NewAccountRepository(es eventStore) *Repository {
 	return &Repository{&es}
@@ -23,16 +23,14 @@ func (r *Repository) Query(id AggregateId) (*Snapshot, error) {
 
 func (r *Repository) Open(id AggregateId, ownerId OwnerId) error {
 	a := r.newAggregate(id)
-	return a.operate(func(a *account) (Event, error) {
+	return a.transact(func(a *account) (Event, error) {
 		return a.Open(id, ownerId)
 	})
 }
 
-func (r *Repository) Deposit(id AggregateId, amount int64) error {
+func (r *Repository) Transact(id AggregateId, tx transaction) error {
 	a := r.loadAggregate(id)
-	return a.operate(func(a *account) (Event, error) {
-		return a.Deposit(amount)
-	})
+	return a.transact(tx)
 }
 
 func (r *Repository) aggregateExists(id AggregateId) bool {
@@ -64,11 +62,11 @@ func (r *Repository) loadAggregate(id AggregateId) aggregate {
 	return a
 }
 
-func (a *aggregate) operate(operation accountOperation) error {
+func (a *aggregate) transact(tx transaction) error {
 	if a.err != nil {
 		return a.err
 	}
-	event, err := operation(a.acc)
+	event, err := tx(a.acc)
 	if err != nil {
 		return err
 	}

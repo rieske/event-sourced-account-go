@@ -42,7 +42,9 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 	repo := NewAccountRepository(&store)
 
 	id := AggregateId{1}
-	err := repo.Deposit(id, 42)
+	err := repo.Transact(id, func(a *account) (Event, error) {
+		return a.Deposit(42)
+	})
 	expectError(t, err, "Aggregate not found")
 }
 
@@ -52,9 +54,30 @@ func TestAccountRepository_Deposit(t *testing.T) {
 
 	id := AggregateId{1}
 	ownerId := OwnerId{2}
-	err := repo.Open(id, ownerId)
+	err := store.Append([]sequencedEvent{
+		{id, 1, AccountOpenedEvent{id, ownerId}},
+	})
+
+	err = repo.Transact(id, func(a *account) (Event, error) {
+		return a.Deposit(42)
+	})
+	expectNoError(t, err)
+}
+
+func TestAccountRepository_Withdraw(t *testing.T) {
+	store := inmemoryEeventstore{}
+	repo := NewAccountRepository(&store)
+
+	id := AggregateId{1}
+	ownerId := OwnerId{2}
+	err := store.Append([]sequencedEvent{
+		{id, 1, AccountOpenedEvent{id, ownerId}},
+		{id, 2, MoneyDepositedEvent{10, 10}},
+	})
 	expectNoError(t, err)
 
-	err = repo.Deposit(id, 42)
+	err = repo.Transact(id, func(a *account) (Event, error) {
+		return a.Withdraw(5)
+	})
 	expectNoError(t, err)
 }
