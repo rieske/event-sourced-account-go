@@ -23,30 +23,32 @@ func openAccount(t *testing.T) *consistencyTestFixture {
 	return &consistencyTestFixture{&store, *repo, id}
 }
 
+func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, operation func() error) {
+	for {
+		err := operation()
+		if err == nil {
+			break
+		}
+		if err.Error() != "Concurrent modification error" {
+			t.Error("Expecting only concurrent modification errors")
+		}
+	}
+	wg.Done()
+}
+
 func TestConcurrentDeposits(t *testing.T) {
 	fixture := openAccount(t)
 
 	operationCount := 50
 	concurrentUsers := 8
 
-	depositWithRetryOnConcurrentModification := func(wg *sync.WaitGroup) {
-		for {
-			err := fixture.repo.Deposit(fixture.aggregateId, 1)
-			if err == nil {
-				break
-			}
-			if err.Error() != "Concurrent modification error" {
-				t.Error("Expecting only concurrent modification errors")
-			}
-		}
-		wg.Done()
-	}
-
 	for i := 0; i < operationCount; i++ {
 		wg := sync.WaitGroup{}
 		for j := 0; j < concurrentUsers; j++ {
 			wg.Add(1)
-			go depositWithRetryOnConcurrentModification(&wg)
+			go withRetryOnConcurrentModification(t, &wg, func() error {
+				return fixture.repo.Deposit(fixture.aggregateId, 1)
+			})
 		}
 		wg.Wait()
 	}
