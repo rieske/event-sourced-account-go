@@ -18,47 +18,39 @@ func (r *Repository) aggregateExists(id AggregateId) bool {
 }
 
 func (r *Repository) Open(id AggregateId, ownerId OwnerId) error {
-	openAccount := func(a *account) (Event, error) {
-		return a.Open(id, ownerId)
-	}
 	a := r.newAggregate(id)
-	return a.operate(openAccount)
+	return a.operate(func(a *account) (Event, error) {
+		return a.Open(id, ownerId)
+	})
 }
 
 func (r *Repository) Deposit(id AggregateId, amount int64) error {
-	deposit := func(a *account) (Event, error) {
-		return a.Deposit(amount)
-	}
-
 	a := r.loadAggregate(id)
-	return a.operate(deposit)
+	return a.operate(func(a *account) (Event, error) {
+		return a.Deposit(amount)
+	})
 }
 
 type aggregate struct {
-	store *eventStore
-	es    *eventStream
-	acc   *account
-	err   error
+	es  *eventStream
+	acc *account
+	err error
 }
 
 func (r *Repository) newAggregate(id AggregateId) aggregate {
-	a := aggregate{
-		store: r.store,
-	}
+	a := aggregate{}
 	if r.aggregateExists(id) {
 		a.err = errors.New("account already exists")
 		return a
 	}
-	a.es = NewEventStream(*a.store)
+	a.es = NewEventStream(*r.store)
 	a.acc = &account{}
 	return a
 }
 
 func (r *Repository) loadAggregate(id AggregateId) aggregate {
-	a := aggregate{
-		store: r.store,
-	}
-	a.es = NewEventStream(*a.store)
+	a := aggregate{}
+	a.es = NewEventStream(*r.store)
 	a.acc, a.err = a.es.replay(id)
 	return a
 }
