@@ -38,17 +38,22 @@ func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 }
 
 func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
+	// given
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
+	// when
 	id := AggregateId{1}
 	err := repo.Transact(id, func(a *account) (Event, error) {
 		return a.Deposit(42)
 	})
+
+	// then
 	expectError(t, err, "Aggregate not found")
 }
 
 func TestAccountRepository_Deposit(t *testing.T) {
+	// given
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
@@ -58,13 +63,21 @@ func TestAccountRepository_Deposit(t *testing.T) {
 		{id, 1, AccountOpenedEvent{id, ownerId}},
 	})
 
+	// when
 	err = repo.Transact(id, func(a *account) (Event, error) {
 		return a.Deposit(42)
 	})
+
+	// then
 	expectNoError(t, err)
+	expectEvents(t, store.events, []sequencedEvent{
+		{id, 1, AccountOpenedEvent{id, ownerId}},
+		{id, 2, MoneyDepositedEvent{42, 42}},
+	})
 }
 
 func TestAccountRepository_Withdraw(t *testing.T) {
+	// given
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
@@ -76,8 +89,29 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 	})
 	expectNoError(t, err)
 
+	// when
 	err = repo.Transact(id, func(a *account) (Event, error) {
-		return a.Withdraw(5)
+		return a.Withdraw(2)
 	})
+
+	// then
 	expectNoError(t, err)
+	expectEvents(t, store.events, []sequencedEvent{
+		{id, 1, AccountOpenedEvent{id, ownerId}},
+		{id, 2, MoneyDepositedEvent{10, 10}},
+		{id, 3, MoneyWithdrawnEvent{2, 8}},
+	})
+}
+
+func expectEvents(t *testing.T, actual, expected []sequencedEvent) {
+	if len(actual) != len(expected) {
+		t.Errorf("event counts do not match, expected %v, got %v", len(expected), len(actual))
+		return
+	}
+
+	for i := range actual {
+		if actual[i] != expected[i] {
+			t.Errorf("Event at index %v does not match, expected %v, got %v", i, expected, actual)
+		}
+	}
 }
