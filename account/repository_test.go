@@ -103,6 +103,112 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 	})
 }
 
+func TestTransferMoney(t *testing.T) {
+	// given
+	store := inmemoryEeventstore{}
+	sourceAccountId := NewAccountId()
+	sourceOwnerId := NewOwnerId()
+	err := store.Append([]sequencedEvent{
+		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+	})
+	expectNoError(t, err)
+
+	targetAccountId := NewAccountId()
+	targetOwnerId := NewOwnerId()
+	err = store.Append([]sequencedEvent{
+		{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
+	})
+	expectNoError(t, err)
+
+	repo := NewAccountRepository(&store)
+
+	// when
+	var transferAmount int64 = 2
+	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source *account) (Event, error) {
+		return source.Withdraw(transferAmount)
+	}, func(target *account) (Event, error) {
+		return target.Deposit(transferAmount)
+	})
+
+	// then
+	expectNoError(t, err)
+	expectEvents(t, store.events, []sequencedEvent{
+		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+		{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
+		{sourceAccountId, 3, MoneyWithdrawnEvent{2, 8}},
+		{targetAccountId, 2, MoneyDepositedEvent{2, 2}},
+	})
+}
+
+func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
+	// given
+	store := inmemoryEeventstore{}
+	sourceAccountId := NewAccountId()
+	sourceOwnerId := NewOwnerId()
+	err := store.Append([]sequencedEvent{
+		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+	})
+	expectNoError(t, err)
+
+	targetAccountId := NewAccountId()
+	targetOwnerId := NewOwnerId()
+	err = store.Append([]sequencedEvent{
+		{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
+	})
+	expectNoError(t, err)
+
+	repo := NewAccountRepository(&store)
+
+	// when
+	var transferAmount int64 = 11
+	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source *account) (Event, error) {
+		return source.Withdraw(transferAmount)
+	}, func(target *account) (Event, error) {
+		return target.Deposit(transferAmount)
+	})
+
+	// then
+	expectError(t, err, "Insufficient balance")
+	expectEvents(t, store.events, []sequencedEvent{
+		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+		{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
+	})
+}
+
+func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
+	// given
+	store := inmemoryEeventstore{}
+	sourceAccountId := NewAccountId()
+	sourceOwnerId := NewOwnerId()
+	err := store.Append([]sequencedEvent{
+		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+	})
+	expectNoError(t, err)
+
+	targetAccountId := NewAccountId()
+	repo := NewAccountRepository(&store)
+
+	// when
+	var transferAmount int64 = 3
+	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source *account) (Event, error) {
+		return source.Withdraw(transferAmount)
+	}, func(target *account) (Event, error) {
+		return target.Deposit(transferAmount)
+	})
+
+	// then
+	expectError(t, err, "Aggregate not found")
+	expectEvents(t, store.events, []sequencedEvent{
+		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+	})
+}
+
 func expectEvents(t *testing.T, actual, expected []sequencedEvent) {
 	if len(actual) != len(expected) {
 		t.Errorf("event counts do not match, expected %v, got %v", len(expected), len(actual))

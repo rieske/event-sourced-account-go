@@ -33,6 +33,32 @@ func (r *Repository) Transact(id AggregateId, tx transaction) error {
 	return a.transact(tx)
 }
 
+func (r *Repository) BiTransact(sourceId, targetId AggregateId, sourceTransaction, targetTransaction transaction) error {
+	es := NewEventStream(*r.store)
+	source, err := es.replay(sourceId)
+	if err != nil {
+		return err
+	}
+	target, err := es.replay(targetId)
+	if err != nil {
+		return err
+	}
+
+	sourceEvent, err := sourceTransaction(source)
+	if err != nil {
+		return err
+	}
+	es.append(sourceEvent, *source.id)
+
+	targetEvent, err := targetTransaction(target)
+	if err != nil {
+		return err
+	}
+	es.append(targetEvent, *target.id)
+
+	return es.commit()
+}
+
 func (r *Repository) aggregateExists(id AggregateId) bool {
 	events := (*r.store).Events(id, 0)
 	return len(events) != 0
