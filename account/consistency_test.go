@@ -15,8 +15,8 @@ func openAccount(t *testing.T) *consistencyTestFixture {
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
-	id := AggregateId{1}
-	ownerId := OwnerId{2}
+	id := NewAccountId()
+	ownerId := NewOwnerId()
 	err := repo.Open(id, ownerId)
 	expectNoError(t, err)
 

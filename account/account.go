@@ -3,10 +3,11 @@ package account
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 )
 
-type AggregateId UUID
-type OwnerId UUID
+type AggregateId uuid.UUID
+type OwnerId uuid.UUID
 
 type account struct {
 	id      *AggregateId
@@ -20,6 +21,14 @@ type Snapshot struct {
 	ownerId OwnerId
 	balance int64
 	open    bool
+}
+
+func NewAccountId() AggregateId {
+	return AggregateId(uuid.New())
+}
+
+func NewOwnerId() OwnerId {
+	return OwnerId(uuid.New())
 }
 
 func NewAccount() *account {

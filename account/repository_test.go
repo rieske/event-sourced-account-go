@@ -6,8 +6,8 @@ func TestAccountRepository_Open(t *testing.T) {
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
-	id := AggregateId{1}
-	ownerId := OwnerId{2}
+	id := NewAccountId()
+	ownerId := NewOwnerId()
 	err := repo.Open(id, ownerId)
 	expectNoError(t, err)
 }
@@ -16,8 +16,8 @@ func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
-	id := AggregateId{1}
-	ownerId := OwnerId{2}
+	id := NewAccountId()
+	ownerId := NewOwnerId()
 	err := repo.Open(id, ownerId)
 	expectNoError(t, err)
 
@@ -29,11 +29,11 @@ func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
-	ownerId := OwnerId{2}
-	err := repo.Open(AggregateId{1}, ownerId)
+	ownerId := NewOwnerId()
+	err := repo.Open(NewAccountId(), ownerId)
 	expectNoError(t, err)
 
-	err = repo.Open(AggregateId{2}, ownerId)
+	err = repo.Open(NewAccountId(), ownerId)
 	expectNoError(t, err)
 }
 
@@ -43,7 +43,7 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 	repo := NewAccountRepository(&store)
 
 	// when
-	id := AggregateId{1}
+	id := NewAccountId()
 	err := repo.Transact(id, func(a *account) (Event, error) {
 		return a.Deposit(42)
 	})
@@ -57,8 +57,8 @@ func TestAccountRepository_Deposit(t *testing.T) {
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
-	id := AggregateId{1}
-	ownerId := OwnerId{2}
+	id := NewAccountId()
+	ownerId := NewOwnerId()
 	err := store.Append([]sequencedEvent{
 		{id, 1, AccountOpenedEvent{id, ownerId}},
 	})
@@ -81,8 +81,8 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 	store := inmemoryEeventstore{}
 	repo := NewAccountRepository(&store)
 
-	id := AggregateId{1}
-	ownerId := OwnerId{2}
+	id := NewAccountId()
+	ownerId := NewOwnerId()
 	err := store.Append([]sequencedEvent{
 		{id, 1, AccountOpenedEvent{id, ownerId}},
 		{id, 2, MoneyDepositedEvent{10, 10}},

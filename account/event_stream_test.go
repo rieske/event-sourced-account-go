@@ -3,8 +3,8 @@ package account
 import "testing"
 
 func TestReplayEvents(t *testing.T) {
-	id := AggregateId{1}
-	ownerId := OwnerId{2}
+	id := NewAccountId()
+	ownerId := NewOwnerId()
 	store := inmemoryEeventstore{}
 	err := store.Append([]sequencedEvent{
 		{id, 1, AccountOpenedEvent{id, ownerId}},
@@ -41,8 +41,8 @@ func TestAppendEvent(t *testing.T) {
 	store := inmemoryEeventstore{}
 	es := NewEventStream(&store)
 
-	id := AggregateId{1}
-	ownerId := OwnerId{2}
+	id := NewAccountId()
+	ownerId := NewOwnerId()
 	event := AccountOpenedEvent{id, ownerId}
 	es.append(event, id)
 
@@ -56,10 +56,10 @@ func TestCommitInSequence(t *testing.T) {
 	store := inmemoryEeventstore{}
 	es := NewEventStream(&store)
 
-	id := AggregateId{1}
+	id := NewAccountId()
 
 	a := account{}
-	accountOpenedEvent, err := a.Open(id, OwnerId{2})
+	accountOpenedEvent, err := a.Open(id, NewOwnerId())
 	expectNoError(t, err)
 	es.append(accountOpenedEvent, id)
 
@@ -89,10 +89,10 @@ func TestCommitOutOfSequence(t *testing.T) {
 	store := inmemoryEeventstore{}
 	es := NewEventStream(&store)
 
-	id := AggregateId{1}
+	id := NewAccountId()
 
 	a := account{}
-	accountOpenedEvent, err := a.Open(id, OwnerId{2})
+	accountOpenedEvent, err := a.Open(id, NewOwnerId())
 	expectNoError(t, err)
 	es.append(accountOpenedEvent, id)
 	err = es.commit()
