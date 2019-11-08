@@ -44,7 +44,8 @@ func TestAppendEvent(t *testing.T) {
 	id := NewAccountId()
 	ownerId := NewOwnerId()
 	event := AccountOpenedEvent{id, ownerId}
-	es.append(event, id)
+	a := account{}
+	es.append(event, &a, id)
 
 	seqEvent := es.uncomittedEvents[0]
 	assertEqual(t, seqEvent.event, event)
@@ -59,15 +60,13 @@ func TestCommitInSequence(t *testing.T) {
 	id := NewAccountId()
 
 	a := account{}
-	accountOpenedEvent, err := a.Open(id, NewOwnerId())
-	expectNoError(t, err)
-	es.append(accountOpenedEvent, id)
+	accountOpenedEvent := AccountOpenedEvent{id, NewOwnerId()}
+	es.append(accountOpenedEvent, &a, id)
 
-	depositEvent, err := a.Deposit(42)
-	expectNoError(t, err)
-	es.append(depositEvent, id)
+	depositEvent := MoneyDepositedEvent{42, 42}
+	es.append(depositEvent, &a, id)
 
-	err = es.commit()
+	err := es.commit()
 	expectNoError(t, err)
 
 	assertEqual(t, 0, len(es.uncomittedEvents))
@@ -92,27 +91,24 @@ func TestCommitOutOfSequence(t *testing.T) {
 	id := NewAccountId()
 
 	a := account{}
-	accountOpenedEvent, err := a.Open(id, NewOwnerId())
-	expectNoError(t, err)
-	es.append(accountOpenedEvent, id)
-	err = es.commit()
+	accountOpenedEvent := AccountOpenedEvent{id, NewOwnerId()}
+	es.append(accountOpenedEvent, &a, id)
+	err := es.commit()
 	expectNoError(t, err)
 
 	es1 := NewEventStream(&store)
 	a1, err := es1.replay(id)
 	expectNoError(t, err)
 
-	e1, err := a1.Deposit(10)
-	expectNoError(t, err)
-	es1.append(e1, id)
+	e1 := MoneyDepositedEvent{10, 10}
+	es1.append(e1, a1, id)
 
 	es2 := NewEventStream(&store)
 	a2, err := es2.replay(id)
 	expectNoError(t, err)
 
-	e2, err := a2.Deposit(10)
-	expectNoError(t, err)
-	es2.append(e2, id)
+	e2 := MoneyDepositedEvent{10, 10}
+	es2.append(e2, a2, id)
 
 	err = es1.commit()
 	expectNoError(t, err)

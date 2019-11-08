@@ -6,7 +6,8 @@ type Repository struct {
 	store *eventStore
 }
 
-type transaction func(*account) (Event, error)
+type transaction func(*account) error
+type biTransaction func(*account, *account) error
 
 func NewAccountRepository(es eventStore) *Repository {
 	return &Repository{&es}
@@ -23,7 +24,7 @@ func (r *Repository) Query(id AggregateId) (*Snapshot, error) {
 
 func (r *Repository) Open(id AggregateId, ownerId OwnerId) error {
 	a := r.newAggregate(id)
-	return a.transact(func(a *account) (Event, error) {
+	return a.transact(func(a *account) error {
 		return a.Open(id, ownerId)
 	})
 }
@@ -33,7 +34,7 @@ func (r *Repository) Transact(id AggregateId, tx transaction) error {
 	return a.transact(tx)
 }
 
-func (r *Repository) BiTransact(sourceId, targetId AggregateId, sourceTransaction, targetTransaction transaction) error {
+func (r *Repository) BiTransact(sourceId, targetId AggregateId, tx biTransaction) error {
 	es := NewEventStream(*r.store)
 	source, err := es.replay(sourceId)
 	if err != nil {
@@ -44,17 +45,10 @@ func (r *Repository) BiTransact(sourceId, targetId AggregateId, sourceTransactio
 		return err
 	}
 
-	sourceEvent, err := sourceTransaction(source)
+	err = tx(source, target)
 	if err != nil {
 		return err
 	}
-	es.append(sourceEvent, *source.id)
-
-	targetEvent, err := targetTransaction(target)
-	if err != nil {
-		return err
-	}
-	es.append(targetEvent, *target.id)
 
 	return es.commit()
 }
@@ -65,7 +59,7 @@ func (r *Repository) aggregateExists(id AggregateId) bool {
 }
 
 type aggregate struct {
-	es  *eventStream
+	es  *transactionalEventStream
 	acc *account
 	err error
 }
@@ -77,7 +71,8 @@ func (r *Repository) newAggregate(id AggregateId) aggregate {
 		return a
 	}
 	a.es = NewEventStream(*r.store)
-	a.acc = &account{}
+	acc := NewAccount(a.es)
+	a.acc = &acc
 	return a
 }
 
@@ -92,11 +87,10 @@ func (a *aggregate) transact(tx transaction) error {
 	if a.err != nil {
 		return a.err
 	}
-	event, err := tx(a.acc)
+	err := tx(a.acc)
 	if err != nil {
 		return err
 	}
-	a.es.append(event, *a.acc.id)
 
 	return a.es.commit()
 }

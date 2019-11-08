@@ -10,6 +10,7 @@ type AggregateId uuid.UUID
 type OwnerId uuid.UUID
 
 type account struct {
+	es      eventStream
 	id      *AggregateId
 	ownerId *OwnerId
 	balance int64
@@ -31,8 +32,8 @@ func NewOwnerId() OwnerId {
 	return OwnerId(uuid.New())
 }
 
-func NewAccount() *account {
-	return &account{}
+func NewAccount(es eventStream) account {
+	return account{es: es}
 }
 
 func (a account) Id() AggregateId {
@@ -43,59 +44,59 @@ func (a *account) Snapshot() Snapshot {
 	return Snapshot{*a.id, *a.ownerId, a.balance, a.open}
 }
 
-func (a *account) Open(accountId AggregateId, ownerId OwnerId) (Event, error) {
+func (a *account) Open(accountId AggregateId, ownerId OwnerId) error {
 	if a.id != nil || a.ownerId != nil {
-		return nil, errors.New("account already open")
+		return errors.New("account already open")
 	}
 
 	event := AccountOpenedEvent{accountId, ownerId}
-	a.applyAccountOpened(event)
-	return event, nil
+	a.es.append(event, a, accountId)
+	return nil
 }
 
-func (a *account) Deposit(amount int64) (Event, error) {
+func (a *account) Deposit(amount int64) error {
 	if amount < 0 {
-		return nil, errors.New("Can not deposit negative amount")
+		return errors.New("Can not deposit negative amount")
 	}
 	if !a.open {
-		return nil, errors.New("Account not open")
+		return errors.New("Account not open")
 	}
 	if amount == 0 {
-		return nil, nil
+		return nil
 	}
 
 	event := MoneyDepositedEvent{amount, a.balance + amount}
-	a.applyMoneyDeposited(event)
-	return event, nil
+	a.es.append(event, a, *a.id)
+	return nil
 }
 
-func (a *account) Withdraw(amount int64) (Event, error) {
+func (a *account) Withdraw(amount int64) error {
 	if amount < 0 {
-		return nil, errors.New("Can not withdraw negative amount")
+		return errors.New("Can not withdraw negative amount")
 	}
 	if !a.open {
-		return nil, errors.New("Account not open")
+		return errors.New("Account not open")
 	}
 	if amount > a.balance {
-		return nil, errors.New("Insufficient balance")
+		return errors.New("Insufficient balance")
 	}
 	if amount == 0 {
-		return nil, nil
+		return nil
 	}
 
 	event := MoneyWithdrawnEvent{amount, a.balance - amount}
-	a.applyMoneyWithdrawn(event)
-	return event, nil
+	a.es.append(event, a, *a.id)
+	return nil
 }
 
-func (a *account) Close() (Event, error) {
+func (a *account) Close() error {
 	if a.balance != 0 {
-		return nil, errors.New("Balance outstanding")
+		return errors.New("Balance outstanding")
 	}
 
 	event := AccountClosedEvent{}
-	a.applyAccountClosed(event)
-	return event, nil
+	a.es.append(event, a, *a.id)
+	return nil
 }
 
 func (a *account) applyAccountOpened(event AccountOpenedEvent) {

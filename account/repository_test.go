@@ -44,7 +44,7 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 
 	// when
 	id := NewAccountId()
-	err := repo.Transact(id, func(a *account) (Event, error) {
+	err := repo.Transact(id, func(a *account) error {
 		return a.Deposit(42)
 	})
 
@@ -64,7 +64,7 @@ func TestAccountRepository_Deposit(t *testing.T) {
 	})
 
 	// when
-	err = repo.Transact(id, func(a *account) (Event, error) {
+	err = repo.Transact(id, func(a *account) error {
 		return a.Deposit(42)
 	})
 
@@ -90,7 +90,7 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 	expectNoError(t, err)
 
 	// when
-	err = repo.Transact(id, func(a *account) (Event, error) {
+	err = repo.Transact(id, func(a *account) error {
 		return a.Withdraw(2)
 	})
 
@@ -125,9 +125,11 @@ func TestTransferMoney(t *testing.T) {
 
 	// when
 	var transferAmount int64 = 2
-	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source *account) (Event, error) {
-		return source.Withdraw(transferAmount)
-	}, func(target *account) (Event, error) {
+	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source, target *account) error {
+		err := source.Withdraw(transferAmount)
+		if err != nil {
+			return err
+		}
 		return target.Deposit(transferAmount)
 	})
 
@@ -164,9 +166,11 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 
 	// when
 	var transferAmount int64 = 11
-	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source *account) (Event, error) {
-		return source.Withdraw(transferAmount)
-	}, func(target *account) (Event, error) {
+	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source, target *account) error {
+		err := source.Withdraw(transferAmount)
+		if err != nil {
+			return err
+		}
 		return target.Deposit(transferAmount)
 	})
 
@@ -195,9 +199,11 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 
 	// when
 	var transferAmount int64 = 3
-	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source *account) (Event, error) {
-		return source.Withdraw(transferAmount)
-	}, func(target *account) (Event, error) {
+	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source, target *account) error {
+		err := source.Withdraw(transferAmount)
+		if err != nil {
+			return err
+		}
 		return target.Deposit(transferAmount)
 	})
 

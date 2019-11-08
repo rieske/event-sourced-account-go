@@ -47,7 +47,7 @@ func TestConcurrentDeposits(t *testing.T) {
 		for j := 0; j < concurrentUsers; j++ {
 			wg.Add(1)
 			go withRetryOnConcurrentModification(t, &wg, func() error {
-				return fixture.repo.Transact(fixture.aggregateId, func(a *account) (Event, error) {
+				return fixture.repo.Transact(fixture.aggregateId, func(a *account) error {
 					return a.Deposit(1)
 				})
 			})

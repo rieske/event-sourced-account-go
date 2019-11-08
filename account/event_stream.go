@@ -15,23 +15,27 @@ type eventStore interface {
 	Append(events []sequencedEvent) error
 }
 
-type eventStream struct {
+type eventStream interface {
+	append(e Event, a *account, id AggregateId)
+}
+
+type transactionalEventStream struct {
 	eventStore       *eventStore
 	versions         map[AggregateId]int
 	uncomittedEvents []sequencedEvent
 }
 
-func NewEventStream(es eventStore) *eventStream {
-	return &eventStream{&es, map[AggregateId]int{}, nil}
+func NewEventStream(es eventStore) *transactionalEventStream {
+	return &transactionalEventStream{&es, map[AggregateId]int{}, nil}
 }
 
-func (s *eventStream) replay(id AggregateId) (*account, error) {
+func (s *transactionalEventStream) replay(id AggregateId) (*account, error) {
 	events := (*s.eventStore).Events(id, 0)
 	var currentVersion = 0
 
-	a := NewAccount()
+	a := NewAccount(s)
 	for _, e := range events {
-		e.apply(a)
+		e.apply(&a)
 		currentVersion += 1
 	}
 
@@ -40,16 +44,17 @@ func (s *eventStream) replay(id AggregateId) (*account, error) {
 	}
 
 	s.versions[id] = currentVersion
-	return a, nil
+	return &a, nil
 }
 
-func (s *eventStream) append(e Event, id AggregateId) {
+func (s *transactionalEventStream) append(e Event, a *account, id AggregateId) {
+	e.apply(a)
 	s.versions[id] = s.versions[id] + 1
 	se := sequencedEvent{id, s.versions[id], e}
 	s.uncomittedEvents = append(s.uncomittedEvents, se)
 }
 
-func (s *eventStream) commit() error {
+func (s *transactionalEventStream) commit() error {
 	err := (*s.eventStore).Append(s.uncomittedEvents)
 	if err != nil {
 		return err
