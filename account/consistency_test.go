@@ -12,15 +12,15 @@ type consistencyTestFixture struct {
 }
 
 func openAccount(t *testing.T) *consistencyTestFixture {
-	store := inmemoryEeventstore{}
-	repo := NewAccountRepository(&store)
+	store := newInMemoryStore()
+	repo := NewAccountRepository(store)
 
 	id := NewAccountId()
 	ownerId := NewOwnerId()
 	err := repo.Open(id, ownerId)
 	expectNoError(t, err)
 
-	return &consistencyTestFixture{&store, *repo, id}
+	return &consistencyTestFixture{store, *repo, id}
 }
 
 func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, operation func() error) {

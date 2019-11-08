@@ -72,7 +72,7 @@ func (r *Repository) newAggregate(id AggregateId) aggregate {
 	}
 	a.es = NewEventStream(*r.store)
 	acc := newAccount(a.es)
-	a.acc = &acc
+	a.acc = acc
 	return a
 }
 

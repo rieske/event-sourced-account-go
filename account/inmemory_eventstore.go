@@ -6,8 +6,13 @@ import (
 )
 
 type inmemoryEeventstore struct {
-	events []sequencedEvent
-	mutex  sync.Mutex
+	events    []sequencedEvent
+	snapshots map[AggregateId]sequencedEvent
+	mutex     sync.Mutex
+}
+
+func newInMemoryStore() *inmemoryEeventstore {
+	return &inmemoryEeventstore{snapshots: map[AggregateId]sequencedEvent{}}
 }
 
 func (es *inmemoryEeventstore) Events(id AggregateId, version int) []Event {
@@ -20,19 +25,26 @@ func (es *inmemoryEeventstore) Events(id AggregateId, version int) []Event {
 	return events
 }
 
+func (es *inmemoryEeventstore) LoadSnapshot(id AggregateId) *sequencedEvent {
+	snapshot := es.snapshots[id]
+	return &snapshot
+}
+
 // the mutex here simulates what a persistence engine of choice should do - ensure consistency
 // Events can only be written in sequence per aggregate.
 // One way to ensure this in RDB - primary key on (aggregateId, sequenceNumber)
 // Event writes have to happen in a transaction - either all get written or none
-func (es *inmemoryEeventstore) Append(events []sequencedEvent) error {
+func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[AggregateId]sequencedEvent) error {
 	es.mutex.Lock()
 	for _, e := range events {
 		if e.seq <= es.latestVersion(e.aggregateId) {
 			es.mutex.Unlock()
 			return errors.New("Concurrent modification error")
 		}
-
 		es.events = append(es.events, e)
+	}
+	for id, snapshot := range snapshots {
+		es.snapshots[id] = snapshot
 	}
 	es.mutex.Unlock()
 	return nil

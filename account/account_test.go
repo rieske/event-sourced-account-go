@@ -200,7 +200,7 @@ func TestApplyEvents(t *testing.T) {
 	}
 
 	for _, e := range events {
-		e.apply(&a)
+		e.apply(a)
 	}
 
 	if a.id != accountId {
@@ -227,7 +227,7 @@ func expectNoError(t *testing.T, err error) {
 	}
 }
 
-func expectBalance(t *testing.T, a account, balance int64) {
+func expectBalance(t *testing.T, a *account, balance int64) {
 	if a.balance != balance {
 		t.Errorf("balance should be %d, got %d", balance, a.balance)
 	}

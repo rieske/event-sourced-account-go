@@ -3,8 +3,8 @@ package account
 import "testing"
 
 func TestAccountRepository_Open(t *testing.T) {
-	store := inmemoryEeventstore{}
-	repo := NewAccountRepository(&store)
+	store := newInMemoryStore()
+	repo := NewAccountRepository(store)
 
 	id := NewAccountId()
 	ownerId := NewOwnerId()
@@ -13,8 +13,8 @@ func TestAccountRepository_Open(t *testing.T) {
 }
 
 func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
-	store := inmemoryEeventstore{}
-	repo := NewAccountRepository(&store)
+	store := newInMemoryStore()
+	repo := NewAccountRepository(store)
 
 	id := NewAccountId()
 	ownerId := NewOwnerId()
@@ -26,8 +26,8 @@ func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 }
 
 func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
-	store := inmemoryEeventstore{}
-	repo := NewAccountRepository(&store)
+	store := newInMemoryStore()
+	repo := NewAccountRepository(store)
 
 	ownerId := NewOwnerId()
 	err := repo.Open(NewAccountId(), ownerId)
@@ -39,8 +39,8 @@ func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 
 func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 	// given
-	store := inmemoryEeventstore{}
-	repo := NewAccountRepository(&store)
+	store := newInMemoryStore()
+	repo := NewAccountRepository(store)
 
 	// when
 	id := NewAccountId()
@@ -54,14 +54,17 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 
 func TestAccountRepository_Deposit(t *testing.T) {
 	// given
-	store := inmemoryEeventstore{}
-	repo := NewAccountRepository(&store)
+	store := newInMemoryStore()
+	repo := NewAccountRepository(store)
 
 	id := NewAccountId()
 	ownerId := NewOwnerId()
-	err := store.Append([]sequencedEvent{
-		{id, 1, AccountOpenedEvent{id, ownerId}},
-	})
+	err := store.Append(
+		[]sequencedEvent{
+			{id, 1, AccountOpenedEvent{id, ownerId}},
+		},
+		map[AggregateId]sequencedEvent{},
+	)
 
 	// when
 	err = repo.Transact(id, func(a *account) error {
@@ -78,15 +81,18 @@ func TestAccountRepository_Deposit(t *testing.T) {
 
 func TestAccountRepository_Withdraw(t *testing.T) {
 	// given
-	store := inmemoryEeventstore{}
-	repo := NewAccountRepository(&store)
+	store := newInMemoryStore()
+	repo := NewAccountRepository(store)
 
 	id := NewAccountId()
 	ownerId := NewOwnerId()
-	err := store.Append([]sequencedEvent{
-		{id, 1, AccountOpenedEvent{id, ownerId}},
-		{id, 2, MoneyDepositedEvent{10, 10}},
-	})
+	err := store.Append(
+		[]sequencedEvent{
+			{id, 1, AccountOpenedEvent{id, ownerId}},
+			{id, 2, MoneyDepositedEvent{10, 10}},
+		},
+		map[AggregateId]sequencedEvent{},
+	)
 	expectNoError(t, err)
 
 	// when
@@ -105,23 +111,29 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 
 func TestTransferMoney(t *testing.T) {
 	// given
-	store := inmemoryEeventstore{}
+	store := newInMemoryStore()
 	sourceAccountId := NewAccountId()
 	sourceOwnerId := NewOwnerId()
-	err := store.Append([]sequencedEvent{
-		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
-		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
-	})
+	err := store.Append(
+		[]sequencedEvent{
+			{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+			{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+		},
+		map[AggregateId]sequencedEvent{},
+	)
 	expectNoError(t, err)
 
 	targetAccountId := NewAccountId()
 	targetOwnerId := NewOwnerId()
-	err = store.Append([]sequencedEvent{
-		{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
-	})
+	err = store.Append(
+		[]sequencedEvent{
+			{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
+		},
+		map[AggregateId]sequencedEvent{},
+	)
 	expectNoError(t, err)
 
-	repo := NewAccountRepository(&store)
+	repo := NewAccountRepository(store)
 
 	// when
 	var transferAmount int64 = 2
@@ -146,23 +158,29 @@ func TestTransferMoney(t *testing.T) {
 
 func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	// given
-	store := inmemoryEeventstore{}
+	store := newInMemoryStore()
 	sourceAccountId := NewAccountId()
 	sourceOwnerId := NewOwnerId()
-	err := store.Append([]sequencedEvent{
-		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
-		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
-	})
+	err := store.Append(
+		[]sequencedEvent{
+			{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+			{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+		},
+		map[AggregateId]sequencedEvent{},
+	)
 	expectNoError(t, err)
 
 	targetAccountId := NewAccountId()
 	targetOwnerId := NewOwnerId()
-	err = store.Append([]sequencedEvent{
-		{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
-	})
+	err = store.Append(
+		[]sequencedEvent{
+			{targetAccountId, 1, AccountOpenedEvent{targetAccountId, targetOwnerId}},
+		},
+		map[AggregateId]sequencedEvent{},
+	)
 	expectNoError(t, err)
 
-	repo := NewAccountRepository(&store)
+	repo := NewAccountRepository(store)
 
 	// when
 	var transferAmount int64 = 11
@@ -185,17 +203,20 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 
 func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	// given
-	store := inmemoryEeventstore{}
+	store := newInMemoryStore()
 	sourceAccountId := NewAccountId()
 	sourceOwnerId := NewOwnerId()
-	err := store.Append([]sequencedEvent{
-		{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
-		{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
-	})
+	err := store.Append(
+		[]sequencedEvent{
+			{sourceAccountId, 1, AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
+			{sourceAccountId, 2, MoneyDepositedEvent{10, 10}},
+		},
+		map[AggregateId]sequencedEvent{},
+	)
 	expectNoError(t, err)
 
 	targetAccountId := NewAccountId()
-	repo := NewAccountRepository(&store)
+	repo := NewAccountRepository(store)
 
 	// when
 	var transferAmount int64 = 3

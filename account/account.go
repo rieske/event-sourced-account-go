@@ -17,13 +17,6 @@ type account struct {
 	open    bool
 }
 
-type Snapshot struct {
-	id      AggregateId
-	ownerId OwnerId
-	balance int64
-	open    bool
-}
-
 func NewAccountId() AggregateId {
 	return AggregateId(uuid.New())
 }
@@ -32,8 +25,8 @@ func NewOwnerId() OwnerId {
 	return OwnerId(uuid.New())
 }
 
-func newAccount(es eventStream) account {
-	return account{es: es}
+func newAccount(es eventStream) *account {
+	return &account{es: es}
 }
 
 func (a account) Id() AggregateId {
@@ -99,6 +92,13 @@ func (a *account) Close() error {
 	return nil
 }
 
+func (a *account) applySnapshot(snapshot Snapshot) {
+	a.id = snapshot.id
+	a.ownerId = snapshot.ownerId
+	a.balance = snapshot.balance
+	a.open = snapshot.open
+}
+
 func (a *account) applyAccountOpened(event AccountOpenedEvent) {
 	a.id = event.accountId
 	a.ownerId = event.ownerId
@@ -121,6 +121,17 @@ func (a *account) applyAccountClosed(event AccountClosedEvent) {
 type Event interface {
 	apply(account *account)
 	//Serialize() []byte
+}
+
+type Snapshot struct {
+	id      AggregateId
+	ownerId OwnerId
+	balance int64
+	open    bool
+}
+
+func (s Snapshot) apply(account *account) {
+	account.applySnapshot(s)
 }
 
 type AccountOpenedEvent struct {
