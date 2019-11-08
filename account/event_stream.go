@@ -33,7 +33,7 @@ func (s *transactionalEventStream) replay(id AggregateId) (*account, error) {
 	events := (*s.eventStore).Events(id, 0)
 	var currentVersion = 0
 
-	a := NewAccount(s)
+	a := newAccount(s)
 	for _, e := range events {
 		e.apply(&a)
 		currentVersion += 1

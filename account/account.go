@@ -11,8 +11,8 @@ type OwnerId uuid.UUID
 
 type account struct {
 	es      eventStream
-	id      *AggregateId
-	ownerId *OwnerId
+	id      AggregateId
+	ownerId OwnerId
 	balance int64
 	open    bool
 }
@@ -32,20 +32,20 @@ func NewOwnerId() OwnerId {
 	return OwnerId(uuid.New())
 }
 
-func NewAccount(es eventStream) account {
+func newAccount(es eventStream) account {
 	return account{es: es}
 }
 
 func (a account) Id() AggregateId {
-	return *a.id
+	return a.id
 }
 
 func (a *account) Snapshot() Snapshot {
-	return Snapshot{*a.id, *a.ownerId, a.balance, a.open}
+	return Snapshot{a.id, a.ownerId, a.balance, a.open}
 }
 
 func (a *account) Open(accountId AggregateId, ownerId OwnerId) error {
-	if a.id != nil || a.ownerId != nil {
+	if a.open {
 		return errors.New("account already open")
 	}
 
@@ -66,7 +66,7 @@ func (a *account) Deposit(amount int64) error {
 	}
 
 	event := MoneyDepositedEvent{amount, a.balance + amount}
-	a.es.append(event, a, *a.id)
+	a.es.append(event, a, a.id)
 	return nil
 }
 
@@ -85,7 +85,7 @@ func (a *account) Withdraw(amount int64) error {
 	}
 
 	event := MoneyWithdrawnEvent{amount, a.balance - amount}
-	a.es.append(event, a, *a.id)
+	a.es.append(event, a, a.id)
 	return nil
 }
 
@@ -95,13 +95,13 @@ func (a *account) Close() error {
 	}
 
 	event := AccountClosedEvent{}
-	a.es.append(event, a, *a.id)
+	a.es.append(event, a, a.id)
 	return nil
 }
 
 func (a *account) applyAccountOpened(event AccountOpenedEvent) {
-	a.id = &event.accountId
-	a.ownerId = &event.ownerId
+	a.id = event.accountId
+	a.ownerId = event.ownerId
 	a.balance = 0
 	a.open = true
 }

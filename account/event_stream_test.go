@@ -20,10 +20,10 @@ func TestReplayEvents(t *testing.T) {
 		t.Error("Account expected")
 	}
 
-	if *a.id != id {
+	if a.id != id {
 		t.Errorf("Account id expected %v, got %v", id, a.id)
 	}
-	if *a.ownerId != ownerId {
+	if a.ownerId != ownerId {
 		t.Error("owner id should be set")
 	}
 	if a.open != true {

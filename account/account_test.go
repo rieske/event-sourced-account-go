@@ -10,12 +10,8 @@ func (s *immediateEventStream) append(e Event, a *account, id AggregateId) {
 	e.apply(a)
 }
 
-func newAccount() account {
-	return NewAccount(&immediateEventStream{})
-}
-
 func TestOpenAccount(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -24,10 +20,10 @@ func TestOpenAccount(t *testing.T) {
 		t.Error(err)
 	}
 
-	if *a.id != accountId {
+	if a.id != accountId {
 		t.Error("account id should be set")
 	}
-	if *a.ownerId != ownerId {
+	if a.ownerId != ownerId {
 		t.Error("owner id should be set")
 	}
 	if a.open != true {
@@ -37,7 +33,7 @@ func TestOpenAccount(t *testing.T) {
 }
 
 func TestOpenAccountAlreadyOpen(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -47,7 +43,7 @@ func TestOpenAccountAlreadyOpen(t *testing.T) {
 }
 
 func TestDeposit(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -60,7 +56,7 @@ func TestDeposit(t *testing.T) {
 }
 
 func TestDepositAccumulatesBalance(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -73,7 +69,7 @@ func TestDepositAccumulatesBalance(t *testing.T) {
 }
 
 func TestCanNotDepositNegativeAmount(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -86,7 +82,7 @@ func TestCanNotDepositNegativeAmount(t *testing.T) {
 }
 
 func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -98,7 +94,7 @@ func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
 }
 
 func TestRequireOpenAccountForDeposit(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	err := a.Deposit(0)
 
@@ -106,7 +102,7 @@ func TestRequireOpenAccountForDeposit(t *testing.T) {
 }
 
 func TestWithdrawal(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -120,7 +116,7 @@ func TestWithdrawal(t *testing.T) {
 }
 
 func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -132,7 +128,7 @@ func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
 }
 
 func TestCanNotWithdrawNegativeAmount(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -144,7 +140,7 @@ func TestCanNotWithdrawNegativeAmount(t *testing.T) {
 }
 
 func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -156,7 +152,7 @@ func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
 }
 
 func TestRequireOpenAccountForWithdrawal(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	err := a.Withdraw(0)
 
@@ -164,7 +160,7 @@ func TestRequireOpenAccountForWithdrawal(t *testing.T) {
 }
 
 func TestCloseAccount(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -179,7 +175,7 @@ func TestCloseAccount(t *testing.T) {
 }
 
 func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -192,7 +188,7 @@ func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
 }
 
 func TestApplyEvents(t *testing.T) {
-	a := newAccount()
+	a := newAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -207,10 +203,10 @@ func TestApplyEvents(t *testing.T) {
 		e.apply(&a)
 	}
 
-	if *a.id != accountId {
+	if a.id != accountId {
 		t.Error("account id should be set")
 	}
-	if *a.ownerId != ownerId {
+	if a.ownerId != ownerId {
 		t.Error("owner id should be set")
 	}
 	if a.open != true {
