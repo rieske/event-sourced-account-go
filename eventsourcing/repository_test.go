@@ -53,7 +53,7 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 	})
 
 	// then
-	test.ExpectError(t, err, "Aggregate not found")
+	test.ExpectError(t, err, "aggregate not found")
 }
 
 func TestAccountRepository_Deposit(t *testing.T) {
@@ -233,7 +233,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	})
 
 	// then
-	test.ExpectError(t, err, "Aggregate not found")
+	test.ExpectError(t, err, "aggregate not found")
 	expectEvents(t, store.events, []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},

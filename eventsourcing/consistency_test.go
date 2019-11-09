@@ -31,7 +31,7 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, operati
 		if err == nil {
 			break
 		}
-		if err.Error() != "Concurrent modification error" {
+		if err.Error() != "concurrent modification error" {
 			t.Error("Expecting only concurrent modification errors")
 		}
 	}

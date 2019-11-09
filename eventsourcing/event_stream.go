@@ -62,7 +62,7 @@ func (s *transactionalEventStream) replay(id account.AggregateId) (*account.Acco
 	}
 
 	if currentVersion == 0 {
-		return nil, errors.New("Aggregate not found")
+		return nil, errors.New("aggregate not found")
 	}
 
 	s.versions[id] = currentVersion

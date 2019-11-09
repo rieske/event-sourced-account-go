@@ -40,7 +40,7 @@ func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[acc
 	for _, e := range events {
 		if e.seq <= es.latestVersion(e.aggregateId) {
 			es.mutex.Unlock()
-			return errors.New("Concurrent modification error")
+			return errors.New("concurrent modification error")
 		}
 		es.events = append(es.events, e)
 	}
