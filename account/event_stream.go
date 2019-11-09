@@ -21,7 +21,7 @@ type eventStream interface {
 }
 
 type transactionalEventStream struct {
-	eventStore           *eventStore
+	eventStore           eventStore
 	snapshotFrequency    int
 	versions             map[AggregateId]int
 	uncommittedEvents    []sequencedEvent
@@ -30,7 +30,7 @@ type transactionalEventStream struct {
 
 func NewEventStream(es eventStore) *transactionalEventStream {
 	return &transactionalEventStream{
-		eventStore:           &es,
+		eventStore:           es,
 		versions:             map[AggregateId]int{},
 		uncommittedSnapshots: map[AggregateId]sequencedEvent{},
 	}
@@ -38,7 +38,7 @@ func NewEventStream(es eventStore) *transactionalEventStream {
 
 func NewSnapshottingEventStream(es eventStore, snapshotFrequency int) *transactionalEventStream {
 	return &transactionalEventStream{
-		eventStore:           &es,
+		eventStore:           es,
 		snapshotFrequency:    snapshotFrequency,
 		versions:             map[AggregateId]int{},
 		uncommittedSnapshots: map[AggregateId]sequencedEvent{},
@@ -46,7 +46,7 @@ func NewSnapshottingEventStream(es eventStore, snapshotFrequency int) *transacti
 }
 
 func (s *transactionalEventStream) applySnapshot(id AggregateId, a *account) int {
-	snapshot := (*s.eventStore).LoadSnapshot(id)
+	snapshot := s.eventStore.LoadSnapshot(id)
 	if snapshot.event != nil {
 		snapshot.event.apply(a)
 		return snapshot.seq
@@ -57,7 +57,7 @@ func (s *transactionalEventStream) applySnapshot(id AggregateId, a *account) int
 func (s *transactionalEventStream) replay(id AggregateId) (*account, error) {
 	a := newAccount(s)
 	var currentVersion = s.applySnapshot(id, a)
-	events := (*s.eventStore).Events(id, currentVersion)
+	events := s.eventStore.Events(id, currentVersion)
 
 	for _, e := range events {
 		e.apply(a)
@@ -84,7 +84,7 @@ func (s *transactionalEventStream) append(e Event, a *account, id AggregateId) {
 }
 
 func (s *transactionalEventStream) commit() error {
-	err := (*s.eventStore).Append(s.uncommittedEvents, s.uncommittedSnapshots)
+	err := s.eventStore.Append(s.uncommittedEvents, s.uncommittedSnapshots)
 	if err != nil {
 		return err
 	}
