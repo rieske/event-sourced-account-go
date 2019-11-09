@@ -1,17 +1,18 @@
 package account
 
 import (
+	"github.com/rieske/event-sourced-account-go/test"
 	"testing"
 )
 
 type immediateEventStream struct{}
 
-func (s *immediateEventStream) append(e Event, a *account, id AggregateId) {
-	e.apply(a)
+func (s *immediateEventStream) Append(e Event, a Aggregate, id AggregateId) {
+	e.Apply(a)
 }
 
 func TestOpenAccount(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -21,29 +22,29 @@ func TestOpenAccount(t *testing.T) {
 	}
 
 	if a.id != accountId {
-		t.Error("account id should be set")
+		t.Error("Account Id should be set")
 	}
 	if a.ownerId != ownerId {
-		t.Error("owner id should be set")
+		t.Error("owner Id should be set")
 	}
 	if a.open != true {
-		t.Error("account should be open")
+		t.Error("Account should be Open")
 	}
 	expectBalance(t, a, 0)
 }
 
 func TestOpenAccountAlreadyOpen(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 	err := a.Open(accountId, ownerId)
-	expectError(t, err, "account already open")
+	test.ExpectError(t, err, "Account already Open")
 }
 
 func TestDeposit(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -51,12 +52,12 @@ func TestDeposit(t *testing.T) {
 
 	err := a.Deposit(42)
 
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 	expectBalance(t, a, 42)
 }
 
 func TestDepositAccumulatesBalance(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -69,7 +70,7 @@ func TestDepositAccumulatesBalance(t *testing.T) {
 }
 
 func TestCanNotDepositNegativeAmount(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -77,12 +78,12 @@ func TestCanNotDepositNegativeAmount(t *testing.T) {
 
 	err := a.Deposit(-1)
 
-	expectError(t, err, "Can not deposit negative amount")
+	test.ExpectError(t, err, "Can not deposit negative amount")
 	expectBalance(t, a, 0)
 }
 
 func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -90,19 +91,19 @@ func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
 
 	err := a.Deposit(0)
 
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 }
 
 func TestRequireOpenAccountForDeposit(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	err := a.Deposit(0)
 
-	expectError(t, err, "Account not open")
+	test.ExpectError(t, err, "Account not Open")
 }
 
 func TestWithdrawal(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -111,12 +112,12 @@ func TestWithdrawal(t *testing.T) {
 
 	err := a.Withdraw(5)
 
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 	expectBalance(t, a, 5)
 }
 
 func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -124,11 +125,11 @@ func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
 
 	err := a.Withdraw(5)
 
-	expectError(t, err, "Insufficient balance")
+	test.ExpectError(t, err, "Insufficient balance")
 }
 
 func TestCanNotWithdrawNegativeAmount(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -136,11 +137,11 @@ func TestCanNotWithdrawNegativeAmount(t *testing.T) {
 
 	err := a.Withdraw(-1)
 
-	expectError(t, err, "Can not withdraw negative amount")
+	test.ExpectError(t, err, "Can not withdraw negative amount")
 }
 
 func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -148,19 +149,19 @@ func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
 
 	err := a.Withdraw(0)
 
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 }
 
 func TestRequireOpenAccountForWithdrawal(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	err := a.Withdraw(0)
 
-	expectError(t, err, "Account not open")
+	test.ExpectError(t, err, "Account not Open")
 }
 
 func TestCloseAccount(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -168,14 +169,14 @@ func TestCloseAccount(t *testing.T) {
 
 	err := a.Close()
 
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 	if a.open != false {
-		t.Error("account should be closed")
+		t.Error("Account should be closed")
 	}
 }
 
 func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -184,11 +185,11 @@ func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
 
 	err := a.Close()
 
-	expectError(t, err, "Balance outstanding")
+	test.ExpectError(t, err, "Balance outstanding")
 }
 
 func TestApplyEvents(t *testing.T) {
-	a := newAccount(&immediateEventStream{})
+	a := NewAccount(&immediateEventStream{})
 
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
@@ -200,35 +201,23 @@ func TestApplyEvents(t *testing.T) {
 	}
 
 	for _, e := range events {
-		e.apply(a)
+		e.Apply(a)
 	}
 
 	if a.id != accountId {
-		t.Error("account id should be set")
+		t.Error("Account Id should be set")
 	}
 	if a.ownerId != ownerId {
-		t.Error("owner id should be set")
+		t.Error("owner Id should be set")
 	}
 	if a.open != true {
-		t.Error("account should be open")
+		t.Error("Account should be Open")
 	}
 	expectBalance(t, a, 3)
 }
 
-func expectError(t *testing.T, err error, message string) {
-	if err == nil || err.Error() != message {
-		t.Errorf("error expected - %s", message)
-	}
-}
-
-func expectNoError(t *testing.T, err error) {
-	if err != nil {
-		t.Error("no error expected, got:", err)
-	}
-}
-
-func expectBalance(t *testing.T, a *account, balance int64) {
+func expectBalance(t *testing.T, a *Account, balance int64) {
 	if a.balance != balance {
-		t.Errorf("balance should be %d, got %d", balance, a.balance)
+		t.Errorf("Balance should be %d, got %d", balance, a.balance)
 	}
 }

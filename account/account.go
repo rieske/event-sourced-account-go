@@ -5,11 +5,31 @@ import (
 	"github.com/google/uuid"
 )
 
-type AggregateId uuid.UUID
 type OwnerId uuid.UUID
 
-type account struct {
-	es      eventStream
+type AggregateId uuid.UUID
+
+type Aggregate interface {
+	Snapshot() Snapshot
+
+	applySnapshot(snapshot Snapshot)
+	applyAccountOpened(event AccountOpenedEvent)
+	applyMoneyDeposited(event MoneyDepositedEvent)
+	applyMoneyWithdrawn(event MoneyWithdrawnEvent)
+	applyAccountClosed(event AccountClosedEvent)
+}
+
+type Event interface {
+	Apply(account Aggregate)
+	//Serialize() []byte
+}
+
+type EventStream interface {
+	Append(e Event, a Aggregate, id AggregateId)
+}
+
+type Account struct {
+	es      EventStream
 	id      AggregateId
 	ownerId OwnerId
 	balance int64
@@ -24,50 +44,50 @@ func NewOwnerId() OwnerId {
 	return OwnerId(uuid.New())
 }
 
-func newAccount(es eventStream) *account {
-	return &account{es: es}
+func NewAccount(es EventStream) *Account {
+	return &Account{es: es}
 }
 
-func (a account) Id() AggregateId {
+func (a Account) Id() AggregateId {
 	return a.id
 }
 
-func (a *account) Snapshot() Snapshot {
+func (a *Account) Snapshot() Snapshot {
 	return Snapshot{a.id, a.ownerId, a.balance, a.open}
 }
 
-func (a *account) Open(accountId AggregateId, ownerId OwnerId) error {
+func (a *Account) Open(accountId AggregateId, ownerId OwnerId) error {
 	if a.open {
-		return errors.New("account already open")
+		return errors.New("Account already Open")
 	}
 
 	event := AccountOpenedEvent{accountId, ownerId}
-	a.es.append(event, a, accountId)
+	a.es.Append(event, a, accountId)
 	return nil
 }
 
-func (a *account) Deposit(amount int64) error {
+func (a *Account) Deposit(amount int64) error {
 	if amount < 0 {
 		return errors.New("Can not deposit negative amount")
 	}
 	if !a.open {
-		return errors.New("Account not open")
+		return errors.New("Account not Open")
 	}
 	if amount == 0 {
 		return nil
 	}
 
 	event := MoneyDepositedEvent{amount, a.balance + amount}
-	a.es.append(event, a, a.id)
+	a.es.Append(event, a, a.id)
 	return nil
 }
 
-func (a *account) Withdraw(amount int64) error {
+func (a *Account) Withdraw(amount int64) error {
 	if amount < 0 {
 		return errors.New("Can not withdraw negative amount")
 	}
 	if !a.open {
-		return errors.New("Account not open")
+		return errors.New("Account not Open")
 	}
 	if amount > a.balance {
 		return errors.New("Insufficient balance")
@@ -77,96 +97,91 @@ func (a *account) Withdraw(amount int64) error {
 	}
 
 	event := MoneyWithdrawnEvent{amount, a.balance - amount}
-	a.es.append(event, a, a.id)
+	a.es.Append(event, a, a.id)
 	return nil
 }
 
-func (a *account) Close() error {
+func (a *Account) Close() error {
 	if a.balance != 0 {
 		return errors.New("Balance outstanding")
 	}
 
 	event := AccountClosedEvent{}
-	a.es.append(event, a, a.id)
+	a.es.Append(event, a, a.id)
 	return nil
 }
 
-func (a *account) applySnapshot(snapshot Snapshot) {
-	a.id = snapshot.id
-	a.ownerId = snapshot.ownerId
-	a.balance = snapshot.balance
-	a.open = snapshot.open
+func (a *Account) applySnapshot(snapshot Snapshot) {
+	a.id = snapshot.Id
+	a.ownerId = snapshot.OwnerId
+	a.balance = snapshot.Balance
+	a.open = snapshot.Open
 }
 
-func (a *account) applyAccountOpened(event AccountOpenedEvent) {
-	a.id = event.accountId
-	a.ownerId = event.ownerId
+func (a *Account) applyAccountOpened(event AccountOpenedEvent) {
+	a.id = event.AccountId
+	a.ownerId = event.OwnerId
 	a.balance = 0
 	a.open = true
 }
 
-func (a *account) applyMoneyDeposited(event MoneyDepositedEvent) {
-	a.balance = event.balance
+func (a *Account) applyMoneyDeposited(event MoneyDepositedEvent) {
+	a.balance = event.Balance
 }
 
-func (a *account) applyMoneyWithdrawn(event MoneyWithdrawnEvent) {
-	a.balance = event.balance
+func (a *Account) applyMoneyWithdrawn(event MoneyWithdrawnEvent) {
+	a.balance = event.Balance
 }
 
-func (a *account) applyAccountClosed(event AccountClosedEvent) {
+func (a *Account) applyAccountClosed(event AccountClosedEvent) {
 	a.open = false
 }
 
-type Event interface {
-	apply(account *account)
-	//Serialize() []byte
-}
-
 type Snapshot struct {
-	id      AggregateId
-	ownerId OwnerId
-	balance int64
-	open    bool
+	Id      AggregateId
+	OwnerId OwnerId
+	Balance int64
+	Open    bool
 }
 
-func (s Snapshot) apply(account *account) {
-	account.applySnapshot(s)
+func (s Snapshot) Apply(a Aggregate) {
+	a.applySnapshot(s)
 }
 
 type AccountOpenedEvent struct {
-	accountId AggregateId
-	ownerId   OwnerId
+	AccountId AggregateId
+	OwnerId   OwnerId
 }
 
-func (e AccountOpenedEvent) apply(account *account) {
+func (e AccountOpenedEvent) Apply(account Aggregate) {
 	account.applyAccountOpened(e)
 }
 
 type MoneyDepositedEvent struct {
-	amountDeposited int64
-	balance         int64
+	AmountDeposited int64
+	Balance         int64
 }
 
-func (e MoneyDepositedEvent) apply(account *account) {
+func (e MoneyDepositedEvent) Apply(account Aggregate) {
 	account.applyMoneyDeposited(e)
 }
 
 type MoneyWithdrawnEvent struct {
-	amountWithdrawn int64
-	balance         int64
+	AmountWithdrawn int64
+	Balance         int64
 }
 
-func (e MoneyWithdrawnEvent) apply(account *account) {
+func (e MoneyWithdrawnEvent) Apply(account Aggregate) {
 	account.applyMoneyWithdrawn(e)
 }
 
 type AccountClosedEvent struct {
 }
 
-func (e AccountClosedEvent) apply(account *account) {
+func (e AccountClosedEvent) Apply(account Aggregate) {
 	account.applyAccountClosed(e)
 }
 
 /*func (e AccountOpenedEvent) Serialize() []byte {
-	return e.ownerId
+	return e.OwnerId
 }*/

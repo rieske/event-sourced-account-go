@@ -1,22 +1,23 @@
-package account
+package eventsourcing
 
 import (
 	"errors"
+	"github.com/rieske/event-sourced-account-go/account"
 	"sync"
 )
 
 type inmemoryEeventstore struct {
 	events    []sequencedEvent
-	snapshots map[AggregateId]sequencedEvent
+	snapshots map[account.AggregateId]sequencedEvent
 	mutex     sync.Mutex
 }
 
 func newInMemoryStore() *inmemoryEeventstore {
-	return &inmemoryEeventstore{snapshots: map[AggregateId]sequencedEvent{}}
+	return &inmemoryEeventstore{snapshots: map[account.AggregateId]sequencedEvent{}}
 }
 
-func (es *inmemoryEeventstore) Events(id AggregateId, version int) []Event {
-	events := []Event{}
+func (es *inmemoryEeventstore) Events(id account.AggregateId, version int) []account.Event {
+	events := []account.Event{}
 	for _, e := range es.events {
 		if e.aggregateId == id {
 			events = append(events, e.event)
@@ -25,7 +26,7 @@ func (es *inmemoryEeventstore) Events(id AggregateId, version int) []Event {
 	return events
 }
 
-func (es *inmemoryEeventstore) LoadSnapshot(id AggregateId) *sequencedEvent {
+func (es *inmemoryEeventstore) LoadSnapshot(id account.AggregateId) *sequencedEvent {
 	snapshot := es.snapshots[id]
 	return &snapshot
 }
@@ -34,7 +35,7 @@ func (es *inmemoryEeventstore) LoadSnapshot(id AggregateId) *sequencedEvent {
 // Events can only be written in sequence per aggregate.
 // One way to ensure this in RDB - primary key on (aggregateId, sequenceNumber)
 // Event writes have to happen in a transaction - either all get written or none
-func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[AggregateId]sequencedEvent) error {
+func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[account.AggregateId]sequencedEvent) error {
 	es.mutex.Lock()
 	for _, e := range events {
 		if e.seq <= es.latestVersion(e.aggregateId) {
@@ -50,8 +51,8 @@ func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[Agg
 	return nil
 }
 
-func (es *inmemoryEeventstore) latestVersion(id AggregateId) int {
-	aggVersions := map[AggregateId]int{}
+func (es *inmemoryEeventstore) latestVersion(id account.AggregateId) int {
+	aggVersions := map[account.AggregateId]int{}
 	for _, e := range es.events {
 		aggVersions[e.aggregateId] = e.seq
 	}

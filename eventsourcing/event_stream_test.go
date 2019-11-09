@@ -1,6 +1,10 @@
-package account
+package eventsourcing
 
-import "testing"
+import (
+	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/test"
+	"testing"
+)
 
 type esTestFixture struct {
 	t     *testing.T
@@ -12,15 +16,15 @@ func newInMemoryFixture(t *testing.T) esTestFixture {
 }
 
 func (f *esTestFixture) givenEvents(events []sequencedEvent) {
-	err := f.store.Append(events, map[AggregateId]sequencedEvent{})
-	expectNoError(f.t, err)
+	err := f.store.Append(events, map[account.AggregateId]sequencedEvent{})
+	test.ExpectNoError(f.t, err)
 }
 
 func (f *esTestFixture) givenSnapshot(snapshot sequencedEvent) {
-	err := f.store.Append(nil, map[AggregateId]sequencedEvent{
+	err := f.store.Append(nil, map[account.AggregateId]sequencedEvent{
 		snapshot.aggregateId: snapshot,
 	})
-	expectNoError(f.t, err)
+	test.ExpectNoError(f.t, err)
 }
 
 func (f *esTestFixture) makeEventStream() *transactionalEventStream {
@@ -31,14 +35,14 @@ func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *tran
 	return NewSnapshottingEventStream(f.store, snapshotFrequency)
 }
 
-func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId AggregateId, event Event) {
+func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.AggregateId, event account.Event) {
 	seqEvent := f.store.events[index]
 	assertEqual(f.t, seqEvent.event, event)
 	assertEqual(f.t, seqEvent.aggregateId, aggregateId)
 	assertEqual(f.t, seqEvent.seq, seq)
 }
 
-func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId AggregateId, event Snapshot) {
+func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId account.AggregateId, event account.Snapshot) {
 	snapshot := f.store.LoadSnapshot(aggregateId)
 	assertEqual(f.t, snapshot.event, event)
 	assertEqual(f.t, snapshot.aggregateId, aggregateId)
@@ -46,31 +50,23 @@ func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId AggregateId
 }
 
 func TestReplayEvents(t *testing.T) {
-	id := NewAccountId()
-	ownerId := NewOwnerId()
+	id := account.NewAccountId()
+	ownerId := account.NewOwnerId()
 	fixture := newInMemoryFixture(t)
 	fixture.givenEvents([]sequencedEvent{
-		{id, 1, AccountOpenedEvent{id, ownerId}},
-		{id, 2, MoneyDepositedEvent{42, 42}},
+		{id, 1, account.AccountOpenedEvent{id, ownerId}},
+		{id, 2, account.MoneyDepositedEvent{42, 42}},
 	})
 
 	es := fixture.makeEventStream()
 	a, err := es.replay(id)
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 	if a == nil {
 		t.Error("Account expected")
 	}
 
-	if a.id != id {
-		t.Errorf("Account id expected %v, got %v", id, a.id)
-	}
-	if a.ownerId != ownerId {
-		t.Error("owner id should be set")
-	}
-	if a.open != true {
-		t.Error("account should be open")
-	}
-	expectBalance(t, a, 42)
+	snapshot := a.Snapshot()
+	assertEqual(t, snapshot, account.Snapshot{id, ownerId, 42, true})
 
 	version := es.versions[id]
 	if version != 2 {
@@ -79,31 +75,23 @@ func TestReplayEvents(t *testing.T) {
 }
 
 func TestReplayEventsWithSnapshot(t *testing.T) {
-	id := NewAccountId()
-	ownerId := NewOwnerId()
+	id := account.NewAccountId()
+	ownerId := account.NewOwnerId()
 	fixture := newInMemoryFixture(t)
-	fixture.givenSnapshot(sequencedEvent{id, 5, Snapshot{id, ownerId, 40, true}})
+	fixture.givenSnapshot(sequencedEvent{id, 5, account.Snapshot{id, ownerId, 40, true}})
 	fixture.givenEvents([]sequencedEvent{
-		{id, 6, MoneyDepositedEvent{10, 50}},
+		{id, 6, account.MoneyDepositedEvent{10, 50}},
 	})
 
 	es := fixture.makeEventStream()
 	a, err := es.replay(id)
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 	if a == nil {
 		t.Error("Account expected")
 	}
 
-	if a.id != id {
-		t.Errorf("Account id expected %v, got %v", id, a.id)
-	}
-	if a.ownerId != ownerId {
-		t.Error("owner id should be set")
-	}
-	if a.open != true {
-		t.Error("account should be open")
-	}
-	expectBalance(t, a, 50)
+	snapshot := a.Snapshot()
+	assertEqual(t, snapshot, account.Snapshot{id, ownerId, 50, true})
 
 	version := es.versions[id]
 	if version != 6 {
@@ -115,10 +103,10 @@ func TestAppendEvent(t *testing.T) {
 	fixture := newInMemoryFixture(t)
 	es := fixture.makeEventStream()
 
-	id := NewAccountId()
-	event := AccountOpenedEvent{id, NewOwnerId()}
-	a := account{}
-	es.append(event, &a, id)
+	id := account.NewAccountId()
+	event := account.AccountOpenedEvent{id, account.NewOwnerId()}
+	a := account.Account{}
+	es.Append(event, &a, id)
 
 	seqEvent := es.uncommittedEvents[0]
 	assertEqual(t, seqEvent.event, event)
@@ -130,12 +118,12 @@ func TestCommit(t *testing.T) {
 	fixture := newInMemoryFixture(t)
 	es := fixture.makeEventStream()
 
-	id := NewAccountId()
-	event := AccountOpenedEvent{id, NewOwnerId()}
-	a := account{}
-	es.append(event, &a, id)
+	id := account.NewAccountId()
+	event := account.AccountOpenedEvent{id, account.NewOwnerId()}
+	a := account.Account{}
+	es.Append(event, &a, id)
 	err := es.commit()
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
 	assertEqual(t, 0, len(es.uncommittedEvents))
 	assertEqual(t, 0, len(es.uncommittedSnapshots))
@@ -145,22 +133,22 @@ func TestCommit(t *testing.T) {
 func TestAppendEventWithSnapshot(t *testing.T) {
 	// given
 	fixture := newInMemoryFixture(t)
-	id := NewAccountId()
-	ownerId := NewOwnerId()
+	id := account.NewAccountId()
+	ownerId := account.NewOwnerId()
 	fixture.givenEvents([]sequencedEvent{
-		{id, 1, AccountOpenedEvent{id, ownerId}},
-		{id, 2, MoneyDepositedEvent{10, 10}},
-		{id, 3, MoneyDepositedEvent{10, 20}},
-		{id, 4, MoneyDepositedEvent{10, 30}},
+		{id, 1, account.AccountOpenedEvent{id, ownerId}},
+		{id, 2, account.MoneyDepositedEvent{10, 10}},
+		{id, 3, account.MoneyDepositedEvent{10, 20}},
+		{id, 4, account.MoneyDepositedEvent{10, 30}},
 	})
 
 	es := fixture.makeSnapshottingEventStream(5)
 	a, err := es.replay(id)
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
 	// when
-	event := MoneyDepositedEvent{10, 40}
-	es.append(event, a, id)
+	event := account.MoneyDepositedEvent{10, 40}
+	es.Append(event, a, id)
 
 	// then
 	seqEvent := es.uncommittedEvents[0]
@@ -172,63 +160,53 @@ func TestAppendEventWithSnapshot(t *testing.T) {
 	assertEqual(t, snapshot, sequencedEvent{
 		aggregateId: id,
 		seq:         5,
-		event: Snapshot{
-			id:      id,
-			ownerId: ownerId,
-			balance: 40,
-			open:    true,
-		},
+		event:       account.Snapshot{id, ownerId, 40, true},
 	})
 }
 
 func TestCommitWithSnapshot(t *testing.T) {
 	// given
 	fixture := newInMemoryFixture(t)
-	id := NewAccountId()
-	ownerId := NewOwnerId()
+	id := account.NewAccountId()
+	ownerId := account.NewOwnerId()
 	fixture.givenEvents([]sequencedEvent{
-		{id, 1, AccountOpenedEvent{id, ownerId}},
-		{id, 2, MoneyDepositedEvent{10, 10}},
-		{id, 3, MoneyDepositedEvent{10, 20}},
-		{id, 4, MoneyDepositedEvent{10, 30}},
+		{id, 1, account.AccountOpenedEvent{id, ownerId}},
+		{id, 2, account.MoneyDepositedEvent{10, 10}},
+		{id, 3, account.MoneyDepositedEvent{10, 20}},
+		{id, 4, account.MoneyDepositedEvent{10, 30}},
 	})
 
 	es := fixture.makeSnapshottingEventStream(5)
 	a, err := es.replay(id)
-	expectNoError(t, err)
-	event := MoneyDepositedEvent{10, 40}
-	es.append(event, a, id)
+	test.ExpectNoError(t, err)
+	event := account.MoneyDepositedEvent{10, 40}
+	es.Append(event, a, id)
 
 	// when
 	err = es.commit()
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
 	// then
 	assertEqual(t, len(es.uncommittedEvents), 0)
 	assertEqual(t, len(es.uncommittedSnapshots), 0)
-	fixture.assertPersistedSnapshot(5, id, Snapshot{
-		id:      id,
-		ownerId: ownerId,
-		balance: 40,
-		open:    true,
-	})
+	fixture.assertPersistedSnapshot(5, id, account.Snapshot{id, ownerId, 40, true})
 }
 
 func TestCommitInSequence(t *testing.T) {
 	fixture := newInMemoryFixture(t)
 	es := fixture.makeEventStream()
 
-	id := NewAccountId()
+	id := account.NewAccountId()
 
-	a := account{}
-	accountOpenedEvent := AccountOpenedEvent{id, NewOwnerId()}
-	es.append(accountOpenedEvent, &a, id)
+	a := account.Account{}
+	accountOpenedEvent := account.AccountOpenedEvent{id, account.NewOwnerId()}
+	es.Append(accountOpenedEvent, &a, id)
 
-	depositEvent := MoneyDepositedEvent{42, 42}
-	es.append(depositEvent, &a, id)
+	depositEvent := account.MoneyDepositedEvent{42, 42}
+	es.Append(depositEvent, &a, id)
 
 	err := es.commit()
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
 	assertEqual(t, len(es.uncommittedEvents), 0)
 	assertEqual(t, len(fixture.store.events), 2)
@@ -242,30 +220,30 @@ func TestCommitOutOfSequence(t *testing.T) {
 	store := newInMemoryStore()
 	es := NewEventStream(store)
 
-	id := NewAccountId()
+	id := account.NewAccountId()
 
-	a := account{}
-	accountOpenedEvent := AccountOpenedEvent{id, NewOwnerId()}
-	es.append(accountOpenedEvent, &a, id)
+	a := account.Account{}
+	accountOpenedEvent := account.AccountOpenedEvent{id, account.NewOwnerId()}
+	es.Append(accountOpenedEvent, &a, id)
 	err := es.commit()
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
 	es1 := NewEventStream(store)
 	a1, err := es1.replay(id)
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
-	e1 := MoneyDepositedEvent{10, 10}
-	es1.append(e1, a1, id)
+	e1 := account.MoneyDepositedEvent{10, 10}
+	es1.Append(e1, a1, id)
 
 	es2 := NewEventStream(store)
 	a2, err := es2.replay(id)
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
-	e2 := MoneyDepositedEvent{10, 10}
-	es2.append(e2, a2, id)
+	e2 := account.MoneyDepositedEvent{10, 10}
+	es2.Append(e2, a2, id)
 
 	err = es1.commit()
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
 	err = es2.commit()
 	if err == nil {

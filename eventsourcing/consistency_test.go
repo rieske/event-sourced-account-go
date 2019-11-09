@@ -1,6 +1,8 @@
-package account
+package eventsourcing
 
 import (
+	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/test"
 	"sync"
 	"testing"
 )
@@ -8,17 +10,17 @@ import (
 type consistencyTestFixture struct {
 	store       eventStore
 	repo        Repository
-	aggregateId AggregateId
+	aggregateId account.AggregateId
 }
 
 func openAccount(t *testing.T) *consistencyTestFixture {
 	store := newInMemoryStore()
 	repo := NewAccountRepository(store)
 
-	id := NewAccountId()
-	ownerId := NewOwnerId()
+	id := account.NewAccountId()
+	ownerId := account.NewOwnerId()
 	err := repo.Open(id, ownerId)
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
 	return &consistencyTestFixture{store, *repo, id}
 }
@@ -47,7 +49,7 @@ func TestConcurrentDeposits(t *testing.T) {
 		for j := 0; j < concurrentUsers; j++ {
 			wg.Add(1)
 			go withRetryOnConcurrentModification(t, &wg, func() error {
-				return fixture.repo.Transact(fixture.aggregateId, func(a *account) error {
+				return fixture.repo.Transact(fixture.aggregateId, func(a *account.Account) error {
 					return a.Deposit(1)
 				})
 			})
@@ -56,7 +58,7 @@ func TestConcurrentDeposits(t *testing.T) {
 	}
 
 	snapshot, err := fixture.repo.Query(fixture.aggregateId)
-	expectNoError(t, err)
+	test.ExpectNoError(t, err)
 
-	assertEqual(t, snapshot.balance, int64(operationCount*concurrentUsers))
+	assertEqual(t, snapshot.Balance, int64(operationCount*concurrentUsers))
 }
