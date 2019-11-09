@@ -58,7 +58,7 @@ func (a *Account) Snapshot() Snapshot {
 
 func (a *Account) Open(accountId AggregateId, ownerId OwnerId) error {
 	if a.open {
-		return errors.New("Account already Open")
+		return errors.New("account already open")
 	}
 
 	event := AccountOpenedEvent{accountId, ownerId}
@@ -68,10 +68,10 @@ func (a *Account) Open(accountId AggregateId, ownerId OwnerId) error {
 
 func (a *Account) Deposit(amount int64) error {
 	if amount < 0 {
-		return errors.New("Can not deposit negative amount")
+		return errors.New("can not deposit negative amount")
 	}
 	if !a.open {
-		return errors.New("Account not Open")
+		return errors.New("account not open")
 	}
 	if amount == 0 {
 		return nil
@@ -84,13 +84,13 @@ func (a *Account) Deposit(amount int64) error {
 
 func (a *Account) Withdraw(amount int64) error {
 	if amount < 0 {
-		return errors.New("Can not withdraw negative amount")
+		return errors.New("can not withdraw negative amount")
 	}
 	if !a.open {
-		return errors.New("Account not Open")
+		return errors.New("account not open")
 	}
 	if amount > a.balance {
-		return errors.New("Insufficient balance")
+		return errors.New("insufficient balance")
 	}
 	if amount == 0 {
 		return nil
@@ -103,7 +103,7 @@ func (a *Account) Withdraw(amount int64) error {
 
 func (a *Account) Close() error {
 	if a.balance != 0 {
-		return errors.New("Balance outstanding")
+		return errors.New("balance outstanding")
 	}
 
 	event := AccountClosedEvent{}

@@ -197,7 +197,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	})
 
 	// then
-	test.ExpectError(t, err, "Insufficient balance")
+	test.ExpectError(t, err, "insufficient balance")
 	expectEvents(t, store.events, []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
