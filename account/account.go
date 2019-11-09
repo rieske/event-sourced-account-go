@@ -2,7 +2,6 @@ package account
 
 import (
 	"errors"
-	"fmt"
 	"github.com/google/uuid"
 )
 
@@ -137,10 +136,6 @@ func (s Snapshot) apply(account *account) {
 type AccountOpenedEvent struct {
 	accountId AggregateId
 	ownerId   OwnerId
-}
-
-func (e AccountOpenedEvent) String() string {
-	return fmt.Sprintf("AccountOpenedEvent{ownerId: %s}", e.ownerId)
 }
 
 func (e AccountOpenedEvent) apply(account *account) {
