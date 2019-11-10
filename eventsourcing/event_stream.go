@@ -37,7 +37,7 @@ func NewEventStream(es eventStore, snapshotFrequency int) *transactionalEventStr
 	}
 }
 
-func (s *transactionalEventStream) applySnapshot(id account.AggregateId, a account.Aggregate) int {
+func (s transactionalEventStream) applySnapshot(id account.AggregateId, a account.Aggregate) int {
 	snapshot := s.eventStore.LoadSnapshot(id)
 	if snapshot.event != nil {
 		snapshot.event.Apply(a)

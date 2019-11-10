@@ -47,7 +47,7 @@ func (a Account) Id() AggregateId {
 	return a.id
 }
 
-func (a *Account) Snapshot() Snapshot {
+func (a Account) Snapshot() Snapshot {
 	return Snapshot{a.id, a.ownerId, a.balance, a.open}
 }
 
