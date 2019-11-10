@@ -41,7 +41,7 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, operati
 func TestConcurrentDeposits(t *testing.T) {
 	fixture := openAccount(t, 0)
 
-	operationCount := 50
+	operationCount := 500
 	concurrentUsers := 8
 
 	for i := 0; i < operationCount; i++ {
@@ -66,7 +66,7 @@ func TestConcurrentDeposits(t *testing.T) {
 func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
 	fixture := openAccount(t, 5)
 
-	operationCount := 50
+	operationCount := 500
 	concurrentUsers := 8
 
 	for i := 0; i < operationCount; i++ {

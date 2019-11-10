@@ -27,7 +27,9 @@ func (es *inmemoryEeventstore) Events(id account.AggregateId, version int) []acc
 }
 
 func (es *inmemoryEeventstore) LoadSnapshot(id account.AggregateId) *sequencedEvent {
+	es.mutex.Lock()
 	snapshot := es.snapshots[id]
+	es.mutex.Unlock()
 	return &snapshot
 }
 
