@@ -16,11 +16,11 @@ func newInMemoryStore() *inmemoryEeventstore {
 	return &inmemoryEeventstore{snapshots: map[account.AggregateId]sequencedEvent{}}
 }
 
-func (es *inmemoryEeventstore) Events(id account.AggregateId, version int) []account.Event {
-	events := []account.Event{}
+func (es *inmemoryEeventstore) Events(id account.AggregateId, version int) []sequencedEvent {
+	var events []sequencedEvent
 	for _, e := range es.events {
 		if e.aggregateId == id {
-			events = append(events, e.event)
+			events = append(events, e)
 		}
 	}
 	return events

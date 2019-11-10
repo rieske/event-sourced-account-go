@@ -12,7 +12,7 @@ type sequencedEvent struct {
 }
 
 type eventStore interface {
-	Events(id account.AggregateId, version int) []account.Event
+	Events(id account.AggregateId, version int) []sequencedEvent
 	Append(events []sequencedEvent, snapshots map[account.AggregateId]sequencedEvent) error
 	LoadSnapshot(id account.AggregateId) *sequencedEvent
 }
@@ -52,7 +52,7 @@ func (s *transactionalEventStream) replay(id account.AggregateId) (*account.Acco
 	events := s.eventStore.Events(id, currentVersion)
 
 	for _, e := range events {
-		e.Apply(a)
+		e.event.Apply(a)
 		currentVersion += 1
 	}
 

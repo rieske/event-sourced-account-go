@@ -8,7 +8,7 @@ import (
 
 type esTestFixture struct {
 	t     *testing.T
-	store *inmemoryEeventstore
+	store eventStore
 }
 
 func newInMemoryFixture(t *testing.T) esTestFixture {
@@ -36,7 +36,8 @@ func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *tran
 }
 
 func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.AggregateId, event account.Event) {
-	seqEvent := f.store.events[index]
+	aggregateEvents := f.store.Events(aggregateId, 0)
+	seqEvent := aggregateEvents[index]
 	assertEqual(f.t, seqEvent.event, event)
 	assertEqual(f.t, seqEvent.aggregateId, aggregateId)
 	assertEqual(f.t, seqEvent.seq, seq)
@@ -209,7 +210,7 @@ func TestCommitInSequence(t *testing.T) {
 	test.ExpectNoError(t, err)
 
 	assertEqual(t, len(es.uncommittedEvents), 0)
-	assertEqual(t, len(fixture.store.events), 2)
+	assertEqual(t, len(fixture.store.Events(id, 0)), 2)
 
 	fixture.assertPersistedEvent(0, 1, id, accountOpenedEvent)
 	fixture.assertPersistedEvent(1, 2, id, depositEvent)
