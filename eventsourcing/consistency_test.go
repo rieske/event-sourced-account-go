@@ -10,7 +10,7 @@ import (
 type consistencyTestFixture struct {
 	store       eventStore
 	repo        Repository
-	aggregateId account.AggregateId
+	aggregateId account.Id
 }
 
 func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixture {

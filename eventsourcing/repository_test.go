@@ -67,7 +67,7 @@ func TestAccountRepository_Deposit(t *testing.T) {
 		[]sequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		},
-		map[account.AggregateId]sequencedEvent{},
+		map[account.Id]sequencedEvent{},
 	)
 
 	// when
@@ -95,7 +95,7 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 			{id, 2, account.MoneyDepositedEvent{10, 10}},
 		},
-		map[account.AggregateId]sequencedEvent{},
+		map[account.Id]sequencedEvent{},
 	)
 	test.ExpectNoError(t, err)
 
@@ -123,7 +123,7 @@ func TestTransferMoney(t *testing.T) {
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		},
-		map[account.AggregateId]sequencedEvent{},
+		map[account.Id]sequencedEvent{},
 	)
 	test.ExpectNoError(t, err)
 
@@ -133,7 +133,7 @@ func TestTransferMoney(t *testing.T) {
 		[]sequencedEvent{
 			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		},
-		map[account.AggregateId]sequencedEvent{},
+		map[account.Id]sequencedEvent{},
 	)
 	test.ExpectNoError(t, err)
 
@@ -170,7 +170,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		},
-		map[account.AggregateId]sequencedEvent{},
+		map[account.Id]sequencedEvent{},
 	)
 	test.ExpectNoError(t, err)
 
@@ -180,7 +180,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 		[]sequencedEvent{
 			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		},
-		map[account.AggregateId]sequencedEvent{},
+		map[account.Id]sequencedEvent{},
 	)
 	test.ExpectNoError(t, err)
 
@@ -215,7 +215,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		},
-		map[account.AggregateId]sequencedEvent{},
+		map[account.Id]sequencedEvent{},
 	)
 	test.ExpectNoError(t, err)
 

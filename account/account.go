@@ -5,9 +5,8 @@ import (
 	"github.com/google/uuid"
 )
 
+type Id uuid.UUID
 type OwnerId uuid.UUID
-
-type AggregateId uuid.UUID
 
 type Aggregate interface {
 	Snapshot() Snapshot
@@ -20,19 +19,19 @@ type Aggregate interface {
 }
 
 type EventStream interface {
-	Append(e Event, a Aggregate, id AggregateId)
+	Append(e Event, a Aggregate, id Id)
 }
 
 type Account struct {
 	es      EventStream
-	id      AggregateId
+	id      Id
 	ownerId OwnerId
 	balance int64
 	open    bool
 }
 
-func NewAccountId() AggregateId {
-	return AggregateId(uuid.New())
+func NewAccountId() Id {
+	return Id(uuid.New())
 }
 
 func NewOwnerId() OwnerId {
@@ -43,7 +42,7 @@ func NewAccount(es EventStream) *Account {
 	return &Account{es: es}
 }
 
-func (a Account) Id() AggregateId {
+func (a Account) Id() Id {
 	return a.id
 }
 
@@ -51,7 +50,7 @@ func (a Account) Snapshot() Snapshot {
 	return Snapshot{a.id, a.ownerId, a.balance, a.open}
 }
 
-func (a *Account) Open(accountId AggregateId, ownerId OwnerId) error {
+func (a *Account) Open(accountId Id, ownerId OwnerId) error {
 	if a.open {
 		return errors.New("account already open")
 	}
@@ -133,7 +132,7 @@ func (a *Account) applyAccountClosed(event AccountClosedEvent) {
 }
 
 type Snapshot struct {
-	Id      AggregateId
+	Id      Id
 	OwnerId OwnerId
 	Balance int64
 	Open    bool

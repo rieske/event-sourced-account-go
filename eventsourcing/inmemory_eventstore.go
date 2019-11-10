@@ -8,15 +8,15 @@ import (
 
 type inmemoryEeventstore struct {
 	events    []sequencedEvent
-	snapshots map[account.AggregateId]sequencedEvent
+	snapshots map[account.Id]sequencedEvent
 	mutex     sync.Mutex
 }
 
 func newInMemoryStore() *inmemoryEeventstore {
-	return &inmemoryEeventstore{snapshots: map[account.AggregateId]sequencedEvent{}}
+	return &inmemoryEeventstore{snapshots: map[account.Id]sequencedEvent{}}
 }
 
-func (es *inmemoryEeventstore) Events(id account.AggregateId, version int) []sequencedEvent {
+func (es *inmemoryEeventstore) Events(id account.Id, version int) []sequencedEvent {
 	var events []sequencedEvent
 	for _, e := range es.events {
 		if e.aggregateId == id {
@@ -26,7 +26,7 @@ func (es *inmemoryEeventstore) Events(id account.AggregateId, version int) []seq
 	return events
 }
 
-func (es *inmemoryEeventstore) LoadSnapshot(id account.AggregateId) *sequencedEvent {
+func (es *inmemoryEeventstore) LoadSnapshot(id account.Id) *sequencedEvent {
 	es.mutex.Lock()
 	snapshot := es.snapshots[id]
 	es.mutex.Unlock()
@@ -37,7 +37,7 @@ func (es *inmemoryEeventstore) LoadSnapshot(id account.AggregateId) *sequencedEv
 // Events can only be written in sequence per aggregate.
 // One way to ensure this in RDB - primary key on (aggregateId, sequenceNumber)
 // Event writes have to happen in a transaction - either all get written or none
-func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[account.AggregateId]sequencedEvent) error {
+func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent) error {
 	es.mutex.Lock()
 	for _, e := range events {
 		if e.seq <= es.latestVersion(e.aggregateId) {
@@ -53,8 +53,8 @@ func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[acc
 	return nil
 }
 
-func (es *inmemoryEeventstore) latestVersion(id account.AggregateId) int {
-	aggVersions := map[account.AggregateId]int{}
+func (es *inmemoryEeventstore) latestVersion(id account.Id) int {
+	aggVersions := map[account.Id]int{}
 	for _, e := range es.events {
 		aggVersions[e.aggregateId] = e.seq
 	}

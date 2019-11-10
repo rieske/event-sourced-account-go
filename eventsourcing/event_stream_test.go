@@ -16,12 +16,12 @@ func newInMemoryFixture(t *testing.T) esTestFixture {
 }
 
 func (f *esTestFixture) givenEvents(events []sequencedEvent) {
-	err := f.store.Append(events, map[account.AggregateId]sequencedEvent{})
+	err := f.store.Append(events, map[account.Id]sequencedEvent{})
 	test.ExpectNoError(f.t, err)
 }
 
 func (f *esTestFixture) givenSnapshot(snapshot sequencedEvent) {
-	err := f.store.Append(nil, map[account.AggregateId]sequencedEvent{
+	err := f.store.Append(nil, map[account.Id]sequencedEvent{
 		snapshot.aggregateId: snapshot,
 	})
 	test.ExpectNoError(f.t, err)
@@ -35,7 +35,7 @@ func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *tran
 	return NewEventStream(f.store, snapshotFrequency)
 }
 
-func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.AggregateId, event account.Event) {
+func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.Id, event account.Event) {
 	aggregateEvents := f.store.Events(aggregateId, 0)
 	seqEvent := aggregateEvents[index]
 	assertEqual(f.t, seqEvent.event, event)
@@ -43,7 +43,7 @@ func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId acc
 	assertEqual(f.t, seqEvent.seq, seq)
 }
 
-func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId account.AggregateId, event account.Snapshot) {
+func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId account.Id, event account.Snapshot) {
 	snapshot := f.store.LoadSnapshot(aggregateId)
 	assertEqual(f.t, snapshot.event, event)
 	assertEqual(f.t, snapshot.aggregateId, aggregateId)

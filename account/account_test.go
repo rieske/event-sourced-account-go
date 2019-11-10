@@ -7,7 +7,7 @@ import (
 
 type immediateEventStream struct{}
 
-func (s *immediateEventStream) Append(e Event, a Aggregate, id AggregateId) {
+func (s *immediateEventStream) Append(e Event, a Aggregate, id Id) {
 	e.Apply(a)
 }
 

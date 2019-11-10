@@ -6,7 +6,7 @@ type Event interface {
 }
 
 type AccountOpenedEvent struct {
-	AccountId AggregateId
+	AccountId Id
 	OwnerId   OwnerId
 }
 
