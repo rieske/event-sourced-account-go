@@ -13,9 +13,9 @@ type consistencyTestFixture struct {
 	aggregateId account.AggregateId
 }
 
-func openAccount(t *testing.T) *consistencyTestFixture {
+func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixture {
 	store := newInMemoryStore()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, snapshottingFrequency)
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
@@ -39,7 +39,32 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, operati
 }
 
 func TestConcurrentDeposits(t *testing.T) {
-	fixture := openAccount(t)
+	fixture := openAccount(t, 0)
+
+	operationCount := 50
+	concurrentUsers := 8
+
+	for i := 0; i < operationCount; i++ {
+		wg := sync.WaitGroup{}
+		for j := 0; j < concurrentUsers; j++ {
+			wg.Add(1)
+			go withRetryOnConcurrentModification(t, &wg, func() error {
+				return fixture.repo.Transact(fixture.aggregateId, func(a *account.Account) error {
+					return a.Deposit(1)
+				})
+			})
+		}
+		wg.Wait()
+	}
+
+	snapshot, err := fixture.repo.Query(fixture.aggregateId)
+	test.ExpectNoError(t, err)
+
+	assertEqual(t, snapshot.Balance, int64(operationCount*concurrentUsers))
+}
+
+func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
+	fixture := openAccount(t, 5)
 
 	operationCount := 50
 	concurrentUsers := 8

@@ -6,14 +6,19 @@ import (
 )
 
 type Repository struct {
-	store *eventStore
+	store             eventStore
+	snapshotFrequency int
 }
 
 type transaction func(*account.Account) error
 type biTransaction func(*account.Account, *account.Account) error
 
-func NewAccountRepository(es eventStore) *Repository {
-	return &Repository{&es}
+func NewAccountRepository(es eventStore, snapshotFrequency int) *Repository {
+	return &Repository{es, snapshotFrequency}
+}
+
+func (r Repository) newEventStream() *transactionalEventStream {
+	return NewEventStream(r.store, r.snapshotFrequency)
 }
 
 func (r *Repository) Query(id account.AggregateId) (*account.Snapshot, error) {
@@ -39,7 +44,7 @@ func (r *Repository) Transact(id account.AggregateId, tx transaction) error {
 }
 
 func (r *Repository) BiTransact(sourceId, targetId account.AggregateId, tx biTransaction) error {
-	es := NewEventStream(*r.store)
+	es := r.newEventStream()
 	source, err := es.replay(sourceId)
 	if err != nil {
 		return err
@@ -58,7 +63,7 @@ func (r *Repository) BiTransact(sourceId, targetId account.AggregateId, tx biTra
 }
 
 func (r *Repository) aggregateExists(id account.AggregateId) bool {
-	events := (*r.store).Events(id, 0)
+	events := r.store.Events(id, 0)
 	return len(events) != 0
 }
 
@@ -74,7 +79,7 @@ func (r *Repository) newAggregate(id account.AggregateId) aggregate {
 		a.err = errors.New("account already exists")
 		return a
 	}
-	a.es = NewEventStream(*r.store)
+	a.es = r.newEventStream()
 	acc := account.NewAccount(a.es)
 	a.acc = acc
 	return a
@@ -82,7 +87,7 @@ func (r *Repository) newAggregate(id account.AggregateId) aggregate {
 
 func (r *Repository) loadAggregate(id account.AggregateId) aggregate {
 	a := aggregate{}
-	a.es = NewEventStream(*r.store)
+	a.es = NewEventStream(r.store, r.snapshotFrequency)
 	a.acc, a.err = a.es.replay(id)
 	return a
 }

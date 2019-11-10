@@ -25,15 +25,10 @@ type transactionalEventStream struct {
 	uncommittedSnapshots map[account.AggregateId]sequencedEvent
 }
 
-func NewEventStream(es eventStore) *transactionalEventStream {
-	return &transactionalEventStream{
-		eventStore:           es,
-		versions:             map[account.AggregateId]int{},
-		uncommittedSnapshots: map[account.AggregateId]sequencedEvent{},
+func NewEventStream(es eventStore, snapshotFrequency int) *transactionalEventStream {
+	if snapshotFrequency < 0 {
+		panic("snapshot frequency can not be negative")
 	}
-}
-
-func NewSnapshottingEventStream(es eventStore, snapshotFrequency int) *transactionalEventStream {
 	return &transactionalEventStream{
 		eventStore:           es,
 		snapshotFrequency:    snapshotFrequency,

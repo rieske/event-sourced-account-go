@@ -8,7 +8,7 @@ import (
 
 func TestAccountRepository_Open(t *testing.T) {
 	store := newInMemoryStore()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
@@ -18,7 +18,7 @@ func TestAccountRepository_Open(t *testing.T) {
 
 func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 	store := newInMemoryStore()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
@@ -31,7 +31,7 @@ func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 
 func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 	store := newInMemoryStore()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	ownerId := account.NewOwnerId()
 	err := repo.Open(account.NewAccountId(), ownerId)
@@ -44,7 +44,7 @@ func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 	// given
 	store := newInMemoryStore()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	// when
 	id := account.NewAccountId()
@@ -59,7 +59,7 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 func TestAccountRepository_Deposit(t *testing.T) {
 	// given
 	store := newInMemoryStore()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
@@ -86,7 +86,7 @@ func TestAccountRepository_Deposit(t *testing.T) {
 func TestAccountRepository_Withdraw(t *testing.T) {
 	// given
 	store := newInMemoryStore()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
@@ -137,7 +137,7 @@ func TestTransferMoney(t *testing.T) {
 	)
 	test.ExpectNoError(t, err)
 
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	// when
 	var transferAmount int64 = 2
@@ -184,7 +184,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	)
 	test.ExpectNoError(t, err)
 
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	// when
 	var transferAmount int64 = 11
@@ -220,7 +220,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	test.ExpectNoError(t, err)
 
 	targetAccountId := account.NewAccountId()
-	repo := NewAccountRepository(store)
+	repo := NewAccountRepository(store, 0)
 
 	// when
 	var transferAmount int64 = 3
