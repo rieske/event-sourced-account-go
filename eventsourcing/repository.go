@@ -5,7 +5,7 @@ import (
 	"github.com/rieske/event-sourced-account-go/account"
 )
 
-type Repository struct {
+type repository struct {
 	store             eventStore
 	snapshotFrequency int
 }
@@ -13,15 +13,15 @@ type Repository struct {
 type transaction func(*account.Account) error
 type biTransaction func(*account.Account, *account.Account) error
 
-func NewAccountRepository(es eventStore, snapshotFrequency int) *Repository {
-	return &Repository{es, snapshotFrequency}
+func NewAccountRepository(es eventStore, snapshotFrequency int) *repository {
+	return &repository{es, snapshotFrequency}
 }
 
-func (r Repository) newEventStream() *eventStream {
+func (r repository) newEventStream() *eventStream {
 	return NewEventStream(r.store, r.snapshotFrequency)
 }
 
-func (r Repository) Query(id account.Id) (*account.Snapshot, error) {
+func (r repository) Query(id account.Id) (*account.Snapshot, error) {
 	a := r.loadAggregate(id)
 	if a.err != nil {
 		return nil, a.err
@@ -30,17 +30,17 @@ func (r Repository) Query(id account.Id) (*account.Snapshot, error) {
 	return &snapshot, nil
 }
 
-func (r Repository) Create(id account.Id, tx transaction) error {
+func (r repository) create(id account.Id, tx transaction) error {
 	a := r.newAggregate(id)
 	return a.transact(tx)
 }
 
-func (r Repository) Transact(id account.Id, tx transaction) error {
+func (r repository) transact(id account.Id, tx transaction) error {
 	a := r.loadAggregate(id)
 	return a.transact(tx)
 }
 
-func (r Repository) BiTransact(sourceId, targetId account.Id, tx biTransaction) error {
+func (r repository) biTransact(sourceId, targetId account.Id, tx biTransaction) error {
 	es := r.newEventStream()
 	source, err := es.replay(sourceId)
 	if err != nil {
@@ -59,12 +59,12 @@ func (r Repository) BiTransact(sourceId, targetId account.Id, tx biTransaction) 
 	return es.commit()
 }
 
-func (r Repository) aggregateExists(id account.Id) bool {
+func (r repository) aggregateExists(id account.Id) bool {
 	events := r.store.Events(id, 0)
 	return len(events) != 0
 }
 
-func (r Repository) newAggregate(id account.Id) aggregate {
+func (r repository) newAggregate(id account.Id) aggregate {
 	a := aggregate{}
 	if r.aggregateExists(id) {
 		a.err = errors.New("account already exists")
@@ -75,7 +75,7 @@ func (r Repository) newAggregate(id account.Id) aggregate {
 	return a
 }
 
-func (r Repository) loadAggregate(id account.Id) aggregate {
+func (r repository) loadAggregate(id account.Id) aggregate {
 	a := aggregate{}
 	a.es = r.newEventStream()
 	a.acc, a.err = a.es.replay(id)

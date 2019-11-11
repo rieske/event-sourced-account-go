@@ -8,23 +8,22 @@ import (
 )
 
 type consistencyTestFixture struct {
-	store       eventStore
-	repo        Repository
-	aggregateId account.Id
+	accountService accountService
+	repo           repository
+	aggregateId    account.Id
 }
 
 func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixture {
 	store := newInMemoryStore()
 	repo := NewAccountRepository(store, snapshottingFrequency)
+	accountService := accountService{*repo}
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.Create(id, func(a *account.Account) error {
-		return a.Open(id, ownerId)
-	})
+	err := accountService.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
-	return &consistencyTestFixture{store, *repo, id}
+	return &consistencyTestFixture{accountService, *repo, id}
 }
 
 func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, threadNo int, operation func() error) {
@@ -53,9 +52,7 @@ func TestConcurrentDeposits(t *testing.T) {
 		for j := 0; j < concurrentUsers; j++ {
 			wg.Add(1)
 			go withRetryOnConcurrentModification(t, &wg, j, func() error {
-				return fixture.repo.Transact(fixture.aggregateId, func(a *account.Account) error {
-					return a.Deposit(1)
-				})
+				return fixture.accountService.Deposit(fixture.aggregateId, 1)
 			})
 		}
 		wg.Wait()
@@ -63,7 +60,6 @@ func TestConcurrentDeposits(t *testing.T) {
 
 	snapshot, err := fixture.repo.Query(fixture.aggregateId)
 	assert.NoError(t, err)
-
 	assert.Equal(t, int64(operationCount*concurrentUsers), snapshot.Balance)
 }
 
@@ -78,9 +74,7 @@ func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
 		for j := 0; j < concurrentUsers; j++ {
 			wg.Add(1)
 			go withRetryOnConcurrentModification(t, &wg, j, func() error {
-				return fixture.repo.Transact(fixture.aggregateId, func(a *account.Account) error {
-					return a.Deposit(1)
-				})
+				return fixture.accountService.Deposit(fixture.aggregateId, 1)
 			})
 		}
 		wg.Wait()
@@ -88,6 +82,5 @@ func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
 
 	snapshot, err := fixture.repo.Query(fixture.aggregateId)
 	assert.NoError(t, err)
-
 	assert.Equal(t, int64(operationCount*concurrentUsers), snapshot.Balance)
 }

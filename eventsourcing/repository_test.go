@@ -12,7 +12,7 @@ func TestAccountRepository_Open(t *testing.T) {
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.Create(id, func(a *account.Account) error {
+	err := repo.create(id, func(a *account.Account) error {
 		return a.Open(id, ownerId)
 	})
 	assert.NoError(t, err)
@@ -24,12 +24,12 @@ func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.Create(id, func(a *account.Account) error {
+	err := repo.create(id, func(a *account.Account) error {
 		return a.Open(id, ownerId)
 	})
 	assert.NoError(t, err)
 
-	err = repo.Create(id, func(a *account.Account) error {
+	err = repo.create(id, func(a *account.Account) error {
 		return a.Open(id, ownerId)
 	})
 	assert.EqualError(t, err, "account already exists")
@@ -41,13 +41,13 @@ func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 
 	ownerId := account.NewOwnerId()
 	id := account.NewAccountId()
-	err := repo.Create(id, func(a *account.Account) error {
+	err := repo.create(id, func(a *account.Account) error {
 		return a.Open(id, ownerId)
 	})
 	assert.NoError(t, err)
 
 	id = account.NewAccountId()
-	err = repo.Create(id, func(a *account.Account) error {
+	err = repo.create(id, func(a *account.Account) error {
 		return a.Open(id, ownerId)
 	})
 	assert.NoError(t, err)
@@ -60,7 +60,7 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 
 	// when
 	id := account.NewAccountId()
-	err := repo.Transact(id, func(a *account.Account) error {
+	err := repo.transact(id, func(a *account.Account) error {
 		return a.Deposit(42)
 	})
 
@@ -83,7 +83,7 @@ func TestAccountRepository_Deposit(t *testing.T) {
 	)
 
 	// when
-	err = repo.Transact(id, func(a *account.Account) error {
+	err = repo.transact(id, func(a *account.Account) error {
 		return a.Deposit(42)
 	})
 
@@ -112,7 +112,7 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	err = repo.Transact(id, func(a *account.Account) error {
+	err = repo.transact(id, func(a *account.Account) error {
 		return a.Withdraw(2)
 	})
 
@@ -153,7 +153,7 @@ func TestTransferMoney(t *testing.T) {
 
 	// when
 	var transferAmount int64 = 2
-	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
+	err = repo.biTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
 		err := source.Withdraw(transferAmount)
 		if err != nil {
 			return err
@@ -200,7 +200,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 
 	// when
 	var transferAmount int64 = 11
-	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
+	err = repo.biTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
 		err := source.Withdraw(transferAmount)
 		if err != nil {
 			return err
@@ -236,7 +236,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 
 	// when
 	var transferAmount int64 = 3
-	err = repo.BiTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
+	err = repo.biTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
 		err := source.Withdraw(transferAmount)
 		if err != nil {
 			return err
