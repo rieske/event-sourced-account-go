@@ -8,7 +8,7 @@ import (
 
 type esTestFixture struct {
 	t     *testing.T
-	store eventStore
+	store EventStore
 }
 
 func newInMemoryFixture(t *testing.T) esTestFixture {
@@ -27,11 +27,11 @@ func (f *esTestFixture) givenSnapshot(snapshot sequencedEvent) {
 	assert.NoError(f.t, err)
 }
 
-func (f *esTestFixture) makeEventStream() *transactionalEventStream {
+func (f *esTestFixture) makeEventStream() *eventStream {
 	return NewEventStream(f.store, 0)
 }
 
-func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *transactionalEventStream {
+func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *eventStream {
 	return NewEventStream(f.store, snapshotFrequency)
 }
 

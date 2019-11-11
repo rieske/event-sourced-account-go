@@ -8,7 +8,7 @@ import (
 )
 
 type consistencyTestFixture struct {
-	store       eventStore
+	store       EventStore
 	repo        Repository
 	aggregateId account.Id
 }

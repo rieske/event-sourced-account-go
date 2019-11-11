@@ -6,18 +6,18 @@ import (
 )
 
 type Repository struct {
-	store             eventStore
+	store             EventStore
 	snapshotFrequency int
 }
 
 type transaction func(*account.Account) error
 type biTransaction func(*account.Account, *account.Account) error
 
-func NewAccountRepository(es eventStore, snapshotFrequency int) *Repository {
+func NewAccountRepository(es EventStore, snapshotFrequency int) *Repository {
 	return &Repository{es, snapshotFrequency}
 }
 
-func (r Repository) newEventStream() *transactionalEventStream {
+func (r Repository) newEventStream() *eventStream {
 	return NewEventStream(r.store, r.snapshotFrequency)
 }
 
@@ -86,7 +86,7 @@ func (r Repository) loadAggregate(id account.Id) aggregate {
 }
 
 type aggregate struct {
-	es  *transactionalEventStream
+	es  *eventStream
 	acc *account.Account
 	err error
 }
