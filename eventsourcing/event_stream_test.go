@@ -8,7 +8,7 @@ import (
 
 type esTestFixture struct {
 	t     *testing.T
-	store EventStore
+	store eventStore
 }
 
 func newInMemoryFixture(t *testing.T) esTestFixture {

@@ -11,21 +11,21 @@ type sequencedEvent struct {
 	event       account.Event
 }
 
-type EventStore interface {
+type eventStore interface {
 	Events(id account.Id, version int) []sequencedEvent
 	Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent) error
 	LoadSnapshot(id account.Id) *sequencedEvent
 }
 
 type eventStream struct {
-	eventStore           EventStore
+	eventStore           eventStore
 	snapshotFrequency    int
 	versions             map[account.Id]int
 	uncommittedEvents    []sequencedEvent
 	uncommittedSnapshots map[account.Id]sequencedEvent
 }
 
-func NewEventStream(es EventStore, snapshotFrequency int) *eventStream {
+func NewEventStream(es eventStore, snapshotFrequency int) *eventStream {
 	if snapshotFrequency < 0 {
 		panic("snapshot frequency can not be negative")
 	}
