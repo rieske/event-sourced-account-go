@@ -6,76 +6,65 @@ import (
 	"testing"
 )
 
-func TestAccountRepository_Open(t *testing.T) {
+func newAccountService() accountService {
 	store := newInMemoryStore()
 	repo := NewAccountRepository(store, 0)
+	return accountService{*repo}
+}
+
+func TestOpenAccount(t *testing.T) {
+	service := newAccountService()
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.create(id, func(a *account.Account) error {
-		return a.Open(id, ownerId)
-	})
+	err := service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 }
 
-func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
-	store := newInMemoryStore()
-	repo := NewAccountRepository(store, 0)
+func TestCanNotOpenDuplicateAccount(t *testing.T) {
+	service := newAccountService()
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.create(id, func(a *account.Account) error {
-		return a.Open(id, ownerId)
-	})
+	err := service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
-	err = repo.create(id, func(a *account.Account) error {
-		return a.Open(id, ownerId)
-	})
+	err = service.OpenAccount(id, ownerId)
 	assert.EqualError(t, err, "account already exists")
 }
 
-func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
-	store := newInMemoryStore()
-	repo := NewAccountRepository(store, 0)
+func TestCanOpenDistinctAccounts(t *testing.T) {
+	service := newAccountService()
 
 	ownerId := account.NewOwnerId()
 	id := account.NewAccountId()
-	err := repo.create(id, func(a *account.Account) error {
-		return a.Open(id, ownerId)
-	})
+	err := service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
 	id = account.NewAccountId()
-	err = repo.create(id, func(a *account.Account) error {
-		return a.Open(id, ownerId)
-	})
+	err = service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 }
 
-func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
+func TestCanNotDepositWhenNoAccountExists(t *testing.T) {
 	// given
-	store := newInMemoryStore()
-	repo := NewAccountRepository(store, 0)
+	service := newAccountService()
 
 	// when
 	id := account.NewAccountId()
-	err := repo.transact(id, func(a *account.Account) error {
-		return a.Deposit(42)
-	})
+	err := service.Deposit(id, 42)
 
 	// then
 	assert.EqualError(t, err, "aggregate not found")
 }
 
-func TestAccountRepository_Deposit(t *testing.T) {
+func TestEventSourcing_Deposit(t *testing.T) {
 	// given
-	store := newInMemoryStore()
-	repo := NewAccountRepository(store, 0)
+	service := newAccountService()
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := store.Append(
+	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		},
@@ -83,26 +72,23 @@ func TestAccountRepository_Deposit(t *testing.T) {
 	)
 
 	// when
-	err = repo.transact(id, func(a *account.Account) error {
-		return a.Deposit(42)
-	})
+	err = service.Deposit(id, 42)
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, store.events, []sequencedEvent{
+	expectEvents(t, service.repo.store.Events(id, 0), []sequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{42, 42}},
 	})
 }
 
-func TestAccountRepository_Withdraw(t *testing.T) {
+func TestEventSourcing_Withdraw(t *testing.T) {
 	// given
-	store := newInMemoryStore()
-	repo := NewAccountRepository(store, 0)
+	service := newAccountService()
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := store.Append(
+	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 			{id, 2, account.MoneyDepositedEvent{10, 10}},
@@ -112,13 +98,11 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	err = repo.transact(id, func(a *account.Account) error {
-		return a.Withdraw(2)
-	})
+	err = service.Withdraw(id, 2)
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, store.events, []sequencedEvent{
+	expectEvents(t, service.repo.store.Events(id, 0), []sequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{10, 10}},
 		{id, 3, account.MoneyWithdrawnEvent{2, 8}},
@@ -127,102 +111,77 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 
 func TestTransferMoney(t *testing.T) {
 	// given
-	store := newInMemoryStore()
+	service := newAccountService()
+
 	sourceAccountId := account.NewAccountId()
 	sourceOwnerId := account.NewOwnerId()
-	err := store.Append(
+	targetAccountId := account.NewAccountId()
+	targetOwnerId := account.NewOwnerId()
+	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
-		},
-		map[account.Id]sequencedEvent{},
-	)
-	assert.NoError(t, err)
-
-	targetAccountId := account.NewAccountId()
-	targetOwnerId := account.NewOwnerId()
-	err = store.Append(
-		[]sequencedEvent{
 			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		},
 		map[account.Id]sequencedEvent{},
 	)
 	assert.NoError(t, err)
 
-	repo := NewAccountRepository(store, 0)
-
 	// when
 	var transferAmount int64 = 2
-	err = repo.biTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
-		err := source.Withdraw(transferAmount)
-		if err != nil {
-			return err
-		}
-		return target.Deposit(transferAmount)
-	})
+	err = service.Transfer(sourceAccountId, targetAccountId, transferAmount)
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, store.events, []sequencedEvent{
+	expectEvents(t, service.repo.store.Events(sourceAccountId, 0), []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
-		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		{sourceAccountId, 3, account.MoneyWithdrawnEvent{2, 8}},
+	})
+	expectEvents(t, service.repo.store.Events(targetAccountId, 0), []sequencedEvent{
+		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		{targetAccountId, 2, account.MoneyDepositedEvent{2, 2}},
 	})
 }
 
 func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	// given
-	store := newInMemoryStore()
+	service := newAccountService()
 	sourceAccountId := account.NewAccountId()
 	sourceOwnerId := account.NewOwnerId()
-	err := store.Append(
+	targetAccountId := account.NewAccountId()
+	targetOwnerId := account.NewOwnerId()
+	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
-		},
-		map[account.Id]sequencedEvent{},
-	)
-	assert.NoError(t, err)
-
-	targetAccountId := account.NewAccountId()
-	targetOwnerId := account.NewOwnerId()
-	err = store.Append(
-		[]sequencedEvent{
 			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		},
 		map[account.Id]sequencedEvent{},
 	)
 	assert.NoError(t, err)
 
-	repo := NewAccountRepository(store, 0)
-
 	// when
 	var transferAmount int64 = 11
-	err = repo.biTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
-		err := source.Withdraw(transferAmount)
-		if err != nil {
-			return err
-		}
-		return target.Deposit(transferAmount)
-	})
+	err = service.Transfer(sourceAccountId, targetAccountId, transferAmount)
 
 	// then
 	assert.EqualError(t, err, "insufficient balance")
-	expectEvents(t, store.events, []sequencedEvent{
+	expectEvents(t, service.repo.store.Events(sourceAccountId, 0), []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
+	})
+	expectEvents(t, service.repo.store.Events(targetAccountId, 0), []sequencedEvent{
 		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 	})
 }
 
 func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	// given
-	store := newInMemoryStore()
+	service := newAccountService()
 	sourceAccountId := account.NewAccountId()
 	sourceOwnerId := account.NewOwnerId()
-	err := store.Append(
+	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
@@ -232,24 +191,18 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	assert.NoError(t, err)
 
 	targetAccountId := account.NewAccountId()
-	repo := NewAccountRepository(store, 0)
 
 	// when
 	var transferAmount int64 = 3
-	err = repo.biTransact(sourceAccountId, targetAccountId, func(source, target *account.Account) error {
-		err := source.Withdraw(transferAmount)
-		if err != nil {
-			return err
-		}
-		return target.Deposit(transferAmount)
-	})
+	err = service.Transfer(sourceAccountId, targetAccountId, transferAmount)
 
 	// then
 	assert.EqualError(t, err, "aggregate not found")
-	expectEvents(t, store.events, []sequencedEvent{
+	expectEvents(t, service.repo.store.Events(sourceAccountId, 0), []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
+	expectEvents(t, service.repo.store.Events(targetAccountId, 0), nil)
 }
 
 func expectEvents(t *testing.T, actual, expected []sequencedEvent) {
