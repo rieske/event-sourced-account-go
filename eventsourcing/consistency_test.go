@@ -9,20 +9,17 @@ import (
 
 type consistencyTestFixture struct {
 	accountService accountService
-	repo           repository
 	aggregateId    account.Id
 }
 
 func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixture {
-	store := newInMemoryStore()
-	repo := NewAccountRepository(store, snapshottingFrequency)
-	accountService := accountService{*repo}
+	accountService := accountService{*NewAccountRepository(newInMemoryStore(), snapshottingFrequency)}
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := accountService.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
-	return &consistencyTestFixture{accountService, *repo, id}
+	return &consistencyTestFixture{accountService, id}
 }
 
 func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, threadNo int, operation func() error) {

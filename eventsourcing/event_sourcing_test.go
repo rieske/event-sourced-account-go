@@ -121,8 +121,7 @@ func TestTransferMoney(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	var transferAmount int64 = 2
-	err = service.Transfer(sourceAccountId, targetAccountId, transferAmount)
+	err = service.Transfer(sourceAccountId, targetAccountId, 2)
 
 	// then
 	assert.NoError(t, err)
@@ -153,8 +152,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	var transferAmount int64 = 11
-	err = service.Transfer(sourceAccountId, targetAccountId, transferAmount)
+	err = service.Transfer(sourceAccountId, targetAccountId, 11)
 
 	// then
 	assert.EqualError(t, err, "insufficient balance")
@@ -183,8 +181,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	targetAccountId := account.NewAccountId()
 
 	// when
-	var transferAmount int64 = 3
-	err = service.Transfer(sourceAccountId, targetAccountId, transferAmount)
+	err = service.Transfer(sourceAccountId, targetAccountId, 3)
 
 	// then
 	assert.EqualError(t, err, "aggregate not found")
