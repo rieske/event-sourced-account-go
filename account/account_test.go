@@ -17,20 +17,12 @@ func TestOpenAccount(t *testing.T) {
 	accountId := NewAccountId()
 	ownerId := NewOwnerId()
 	err := a.Open(accountId, ownerId)
-	if err != nil {
-		t.Error(err)
-	}
 
-	if a.id != accountId {
-		t.Error("Account Id should be set")
-	}
-	if a.ownerId != ownerId {
-		t.Error("owner Id should be set")
-	}
-	if a.open != true {
-		t.Error("Account should be open")
-	}
-	expectBalance(t, a, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, accountId, a.id)
+	assert.Equal(t, ownerId, a.ownerId)
+	assert.True(t, a.open)
+	assert.Zero(t, a.balance)
 }
 
 func TestOpenAccountAlreadyOpen(t *testing.T) {
@@ -53,7 +45,7 @@ func TestDeposit(t *testing.T) {
 	err := a.Deposit(42)
 
 	assert.NoError(t, err)
-	expectBalance(t, a, 42)
+	assert.Equal(t, int64(42), a.balance)
 }
 
 func TestDepositAccumulatesBalance(t *testing.T) {
@@ -66,7 +58,7 @@ func TestDepositAccumulatesBalance(t *testing.T) {
 	_ = a.Deposit(1)
 	_ = a.Deposit(2)
 
-	expectBalance(t, a, 3)
+	assert.Equal(t, int64(3), a.balance)
 }
 
 func TestCanNotDepositNegativeAmount(t *testing.T) {
@@ -79,7 +71,7 @@ func TestCanNotDepositNegativeAmount(t *testing.T) {
 	err := a.Deposit(-1)
 
 	assert.EqualError(t, err, "can not deposit negative amount")
-	expectBalance(t, a, 0)
+	assert.Zero(t, a.balance)
 }
 
 func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
@@ -113,7 +105,7 @@ func TestWithdrawal(t *testing.T) {
 	err := a.Withdraw(5)
 
 	assert.NoError(t, err)
-	expectBalance(t, a, 5)
+	assert.Equal(t, int64(5), a.balance)
 }
 
 func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
@@ -155,7 +147,7 @@ func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
 func TestRequireOpenAccountForWithdrawal(t *testing.T) {
 	a := NewAccount(&immediateEventStream{})
 
-	err := a.Withdraw(0)
+	err := a.Withdraw(1)
 
 	assert.EqualError(t, err, "account not open")
 }
@@ -170,9 +162,7 @@ func TestCloseAccount(t *testing.T) {
 	err := a.Close()
 
 	assert.NoError(t, err)
-	if a.open != false {
-		t.Error("Account should be closed")
-	}
+	assert.False(t, a.open)
 }
 
 func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
@@ -204,20 +194,8 @@ func TestApplyEvents(t *testing.T) {
 		e.Apply(a)
 	}
 
-	if a.id != accountId {
-		t.Error("Account Id should be set")
-	}
-	if a.ownerId != ownerId {
-		t.Error("owner Id should be set")
-	}
-	if a.open != true {
-		t.Error("Account should be Open")
-	}
-	expectBalance(t, a, 3)
-}
-
-func expectBalance(t *testing.T, a *Account, balance int64) {
-	if a.balance != balance {
-		t.Errorf("Balance should be %d, got %d", balance, a.balance)
-	}
+	assert.Equal(t, accountId, a.id)
+	assert.Equal(t, ownerId, a.ownerId)
+	assert.True(t, a.open)
+	assert.Equal(t, int64(3), a.balance)
 }

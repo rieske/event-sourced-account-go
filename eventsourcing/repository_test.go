@@ -241,14 +241,6 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 }
 
 func expectEvents(t *testing.T, actual, expected []sequencedEvent) {
-	if len(actual) != len(expected) {
-		t.Errorf("event counts do not match, expected %v, got %v", len(expected), len(actual))
-		return
-	}
-
-	for i := range actual {
-		if actual[i] != expected[i] {
-			t.Errorf("Event at index %v does not match, expected %v, got %v", i, expected, actual)
-		}
-	}
+	assert.Equal(t, len(expected), len(actual), "event counts do not match")
+	assert.Equal(t, expected, actual, "events do not match")
 }
