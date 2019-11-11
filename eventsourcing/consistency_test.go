@@ -71,7 +71,7 @@ func testConcurrentDeposits(t *testing.T, snapshottingFrequency int) {
 
 func testConcurrentTransfers(t *testing.T, snapshottingFrequency int) {
 	// given
-	fixture := newConsistencyTestFixture(t, 0)
+	fixture := newConsistencyTestFixture(t, snapshottingFrequency)
 
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := fixture.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
