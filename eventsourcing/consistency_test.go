@@ -17,8 +17,8 @@ type consistencyTestFixture struct {
 func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s accountService) error) {
 	for i := 0; i < f.operationCount; i++ {
 		wg := sync.WaitGroup{}
+		wg.Add(f.concurrentUsers)
 		for j := 0; j < f.concurrentUsers; j++ {
-			wg.Add(1)
 			go withRetryOnConcurrentModification(t, &wg, j, func() error {
 				return action(f.accountService)
 			})

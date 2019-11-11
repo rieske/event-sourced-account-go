@@ -11,7 +11,7 @@ type inmemoryEeventstore struct {
 	events       []sequencedEvent
 	snapshots    map[account.Id]sequencedEvent
 	transactions map[account.Id]uuid.UUID
-	mutex        sync.Mutex
+	mutex        sync.RWMutex
 }
 
 func newInMemoryStore() *inmemoryEeventstore {
@@ -32,9 +32,9 @@ func (es *inmemoryEeventstore) Events(id account.Id, version int) []sequencedEve
 }
 
 func (es *inmemoryEeventstore) LoadSnapshot(id account.Id) *sequencedEvent {
-	es.mutex.Lock()
+	es.mutex.RLock()
 	snapshot := es.snapshots[id]
-	es.mutex.Unlock()
+	es.mutex.RUnlock()
 	return &snapshot
 }
 
@@ -68,8 +68,8 @@ func (es *inmemoryEeventstore) latestVersion(id account.Id) int {
 }
 
 func (es *inmemoryEeventstore) TransactionExists(id account.Id, txId uuid.UUID) bool {
-	es.mutex.Lock()
+	es.mutex.RLock()
 	transactionExists := es.transactions[id] == txId
-	es.mutex.Unlock()
+	es.mutex.RUnlock()
 	return transactionExists
 }
