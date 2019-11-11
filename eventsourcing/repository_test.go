@@ -2,7 +2,7 @@ package eventsourcing
 
 import (
 	"github.com/rieske/event-sourced-account-go/account"
-	"github.com/rieske/event-sourced-account-go/test"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -13,7 +13,7 @@ func TestAccountRepository_Open(t *testing.T) {
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
 	err := repo.Open(id, ownerId)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
@@ -23,10 +23,10 @@ func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
 	err := repo.Open(id, ownerId)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	err = repo.Open(id, ownerId)
-	test.ExpectError(t, err, "account already exists")
+	assert.EqualError(t, err, "account already exists")
 }
 
 func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
@@ -35,10 +35,10 @@ func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 
 	ownerId := account.NewOwnerId()
 	err := repo.Open(account.NewAccountId(), ownerId)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	err = repo.Open(account.NewAccountId(), ownerId)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
@@ -53,7 +53,7 @@ func TestAccountRepository_CanNotDepositWhenNoAccountExists(t *testing.T) {
 	})
 
 	// then
-	test.ExpectError(t, err, "aggregate not found")
+	assert.EqualError(t, err, "aggregate not found")
 }
 
 func TestAccountRepository_Deposit(t *testing.T) {
@@ -76,7 +76,7 @@ func TestAccountRepository_Deposit(t *testing.T) {
 	})
 
 	// then
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	expectEvents(t, store.events, []sequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{42, 42}},
@@ -97,7 +97,7 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 		},
 		map[account.Id]sequencedEvent{},
 	)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	// when
 	err = repo.Transact(id, func(a *account.Account) error {
@@ -105,7 +105,7 @@ func TestAccountRepository_Withdraw(t *testing.T) {
 	})
 
 	// then
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	expectEvents(t, store.events, []sequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{10, 10}},
@@ -125,7 +125,7 @@ func TestTransferMoney(t *testing.T) {
 		},
 		map[account.Id]sequencedEvent{},
 	)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	targetAccountId := account.NewAccountId()
 	targetOwnerId := account.NewOwnerId()
@@ -135,7 +135,7 @@ func TestTransferMoney(t *testing.T) {
 		},
 		map[account.Id]sequencedEvent{},
 	)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	repo := NewAccountRepository(store, 0)
 
@@ -150,7 +150,7 @@ func TestTransferMoney(t *testing.T) {
 	})
 
 	// then
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	expectEvents(t, store.events, []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
@@ -172,7 +172,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 		},
 		map[account.Id]sequencedEvent{},
 	)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	targetAccountId := account.NewAccountId()
 	targetOwnerId := account.NewOwnerId()
@@ -182,7 +182,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 		},
 		map[account.Id]sequencedEvent{},
 	)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	repo := NewAccountRepository(store, 0)
 
@@ -197,7 +197,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	})
 
 	// then
-	test.ExpectError(t, err, "insufficient balance")
+	assert.EqualError(t, err, "insufficient balance")
 	expectEvents(t, store.events, []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
@@ -217,7 +217,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 		},
 		map[account.Id]sequencedEvent{},
 	)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	targetAccountId := account.NewAccountId()
 	repo := NewAccountRepository(store, 0)
@@ -233,7 +233,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	})
 
 	// then
-	test.ExpectError(t, err, "aggregate not found")
+	assert.EqualError(t, err, "aggregate not found")
 	expectEvents(t, store.events, []sequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},

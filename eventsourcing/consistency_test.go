@@ -2,7 +2,7 @@ package eventsourcing
 
 import (
 	"github.com/rieske/event-sourced-account-go/account"
-	"github.com/rieske/event-sourced-account-go/test"
+	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 )
@@ -20,7 +20,7 @@ func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixtur
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
 	err := repo.Open(id, ownerId)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	return &consistencyTestFixture{store, *repo, id}
 }
@@ -60,9 +60,9 @@ func TestConcurrentDeposits(t *testing.T) {
 	}
 
 	snapshot, err := fixture.repo.Query(fixture.aggregateId)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
-	assertEqual(t, snapshot.Balance, int64(operationCount*concurrentUsers))
+	assert.Equal(t, int64(operationCount*concurrentUsers), snapshot.Balance)
 }
 
 func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
@@ -85,7 +85,7 @@ func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
 	}
 
 	snapshot, err := fixture.repo.Query(fixture.aggregateId)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
-	assertEqual(t, snapshot.Balance, int64(operationCount*concurrentUsers))
+	assert.Equal(t, int64(operationCount*concurrentUsers), snapshot.Balance)
 }

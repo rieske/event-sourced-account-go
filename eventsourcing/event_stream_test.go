@@ -2,7 +2,7 @@ package eventsourcing
 
 import (
 	"github.com/rieske/event-sourced-account-go/account"
-	"github.com/rieske/event-sourced-account-go/test"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -17,14 +17,14 @@ func newInMemoryFixture(t *testing.T) esTestFixture {
 
 func (f *esTestFixture) givenEvents(events []sequencedEvent) {
 	err := f.store.Append(events, map[account.Id]sequencedEvent{})
-	test.ExpectNoError(f.t, err)
+	assert.NoError(f.t, err)
 }
 
 func (f *esTestFixture) givenSnapshot(snapshot sequencedEvent) {
 	err := f.store.Append(nil, map[account.Id]sequencedEvent{
 		snapshot.aggregateId: snapshot,
 	})
-	test.ExpectNoError(f.t, err)
+	assert.NoError(f.t, err)
 }
 
 func (f *esTestFixture) makeEventStream() *transactionalEventStream {
@@ -38,16 +38,18 @@ func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *tran
 func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.Id, event account.Event) {
 	aggregateEvents := f.store.Events(aggregateId, 0)
 	seqEvent := aggregateEvents[index]
-	assertEqual(f.t, seqEvent.event, event)
-	assertEqual(f.t, seqEvent.aggregateId, aggregateId)
-	assertEqual(f.t, seqEvent.seq, seq)
+
+	assert.Equal(f.t, event, seqEvent.event)
+	assert.Equal(f.t, aggregateId, seqEvent.aggregateId)
+	assert.Equal(f.t, seq, seqEvent.seq)
 }
 
 func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId account.Id, event account.Snapshot) {
 	snapshot := f.store.LoadSnapshot(aggregateId)
-	assertEqual(f.t, snapshot.event, event)
-	assertEqual(f.t, snapshot.aggregateId, aggregateId)
-	assertEqual(f.t, snapshot.seq, seq)
+
+	assert.Equal(f.t, event, snapshot.event)
+	assert.Equal(f.t, aggregateId, snapshot.aggregateId)
+	assert.Equal(f.t, seq, snapshot.seq)
 }
 
 func TestReplayEvents(t *testing.T) {
@@ -61,13 +63,13 @@ func TestReplayEvents(t *testing.T) {
 
 	es := fixture.makeEventStream()
 	a, err := es.replay(id)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	if a == nil {
 		t.Error("Account expected")
 	}
 
 	snapshot := a.Snapshot()
-	assertEqual(t, snapshot, account.Snapshot{id, ownerId, 42, true})
+	assert.Equal(t, account.Snapshot{id, ownerId, 42, true}, snapshot)
 
 	version := es.versions[id]
 	if version != 2 {
@@ -86,13 +88,13 @@ func TestReplayEventsWithSnapshot(t *testing.T) {
 
 	es := fixture.makeEventStream()
 	a, err := es.replay(id)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	if a == nil {
 		t.Error("Account expected")
 	}
 
 	snapshot := a.Snapshot()
-	assertEqual(t, snapshot, account.Snapshot{id, ownerId, 50, true})
+	assert.Equal(t, account.Snapshot{id, ownerId, 50, true}, snapshot)
 
 	version := es.versions[id]
 	if version != 6 {
@@ -110,9 +112,9 @@ func TestAppendEvent(t *testing.T) {
 	es.Append(event, &a, id)
 
 	seqEvent := es.uncommittedEvents[0]
-	assertEqual(t, seqEvent.event, event)
-	assertEqual(t, seqEvent.aggregateId, id)
-	assertEqual(t, seqEvent.seq, 1)
+	assert.Equal(t, event, seqEvent.event)
+	assert.Equal(t, id, seqEvent.aggregateId)
+	assert.Equal(t, 1, seqEvent.seq)
 }
 
 func TestCommit(t *testing.T) {
@@ -124,10 +126,10 @@ func TestCommit(t *testing.T) {
 	a := account.Account{}
 	es.Append(event, &a, id)
 	err := es.commit()
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
-	assertEqual(t, 0, len(es.uncommittedEvents))
-	assertEqual(t, 0, len(es.uncommittedSnapshots))
+	assert.Equal(t, 0, len(es.uncommittedEvents))
+	assert.Equal(t, 0, len(es.uncommittedSnapshots))
 	fixture.assertPersistedEvent(0, 1, id, event)
 }
 
@@ -145,7 +147,7 @@ func TestAppendEventWithSnapshot(t *testing.T) {
 
 	es := fixture.makeSnapshottingEventStream(5)
 	a, err := es.replay(id)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	// when
 	event := account.MoneyDepositedEvent{10, 40}
@@ -153,16 +155,16 @@ func TestAppendEventWithSnapshot(t *testing.T) {
 
 	// then
 	seqEvent := es.uncommittedEvents[0]
-	assertEqual(t, seqEvent.event, event)
-	assertEqual(t, seqEvent.aggregateId, id)
-	assertEqual(t, seqEvent.seq, 5)
+	assert.Equal(t, event, seqEvent.event)
+	assert.Equal(t, id, seqEvent.aggregateId)
+	assert.Equal(t, 5, seqEvent.seq)
 
 	snapshot := es.uncommittedSnapshots[id]
-	assertEqual(t, snapshot, sequencedEvent{
+	assert.Equal(t, sequencedEvent{
 		aggregateId: id,
 		seq:         5,
 		event:       account.Snapshot{id, ownerId, 40, true},
-	})
+	}, snapshot)
 }
 
 func TestCommitWithSnapshot(t *testing.T) {
@@ -179,17 +181,17 @@ func TestCommitWithSnapshot(t *testing.T) {
 
 	es := fixture.makeSnapshottingEventStream(5)
 	a, err := es.replay(id)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	event := account.MoneyDepositedEvent{10, 40}
 	es.Append(event, a, id)
 
 	// when
 	err = es.commit()
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	// then
-	assertEqual(t, len(es.uncommittedEvents), 0)
-	assertEqual(t, len(es.uncommittedSnapshots), 0)
+	assert.Equal(t, 0, len(es.uncommittedEvents))
+	assert.Equal(t, 0, len(es.uncommittedSnapshots))
 	fixture.assertPersistedSnapshot(5, id, account.Snapshot{id, ownerId, 40, true})
 }
 
@@ -207,10 +209,10 @@ func TestCommitInSequence(t *testing.T) {
 	es.Append(depositEvent, &a, id)
 
 	err := es.commit()
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
-	assertEqual(t, len(es.uncommittedEvents), 0)
-	assertEqual(t, len(fixture.store.Events(id, 0)), 2)
+	assert.Equal(t, 0, len(es.uncommittedEvents))
+	assert.Equal(t, 2, len(fixture.store.Events(id, 0)))
 
 	fixture.assertPersistedEvent(0, 1, id, accountOpenedEvent)
 	fixture.assertPersistedEvent(1, 2, id, depositEvent)
@@ -227,33 +229,27 @@ func TestCommitOutOfSequence(t *testing.T) {
 	accountOpenedEvent := account.AccountOpenedEvent{id, account.NewOwnerId()}
 	es.Append(accountOpenedEvent, &a, id)
 	err := es.commit()
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	es1 := NewEventStream(store, 0)
 	a1, err := es1.replay(id)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	e1 := account.MoneyDepositedEvent{10, 10}
 	es1.Append(e1, a1, id)
 
 	es2 := NewEventStream(store, 0)
 	a2, err := es2.replay(id)
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	e2 := account.MoneyDepositedEvent{10, 10}
 	es2.Append(e2, a2, id)
 
 	err = es1.commit()
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 
 	err = es2.commit()
 	if err == nil {
 		t.Error("Expected concurrent modification error")
-	}
-}
-
-func assertEqual(t *testing.T, a, b interface{}) {
-	if a != b {
-		t.Errorf("Expected %v, got %v", b, a)
 	}
 }

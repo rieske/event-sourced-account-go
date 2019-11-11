@@ -1,7 +1,7 @@
 package account
 
 import (
-	"github.com/rieske/event-sourced-account-go/test"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -40,7 +40,7 @@ func TestOpenAccountAlreadyOpen(t *testing.T) {
 	ownerId := NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 	err := a.Open(accountId, ownerId)
-	test.ExpectError(t, err, "account already open")
+	assert.EqualError(t, err, "account already open")
 }
 
 func TestDeposit(t *testing.T) {
@@ -52,7 +52,7 @@ func TestDeposit(t *testing.T) {
 
 	err := a.Deposit(42)
 
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	expectBalance(t, a, 42)
 }
 
@@ -78,7 +78,7 @@ func TestCanNotDepositNegativeAmount(t *testing.T) {
 
 	err := a.Deposit(-1)
 
-	test.ExpectError(t, err, "can not deposit negative amount")
+	assert.EqualError(t, err, "can not deposit negative amount")
 	expectBalance(t, a, 0)
 }
 
@@ -91,7 +91,7 @@ func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
 
 	err := a.Deposit(0)
 
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestRequireOpenAccountForDeposit(t *testing.T) {
@@ -99,7 +99,7 @@ func TestRequireOpenAccountForDeposit(t *testing.T) {
 
 	err := a.Deposit(0)
 
-	test.ExpectError(t, err, "account not open")
+	assert.EqualError(t, err, "account not open")
 }
 
 func TestWithdrawal(t *testing.T) {
@@ -112,7 +112,7 @@ func TestWithdrawal(t *testing.T) {
 
 	err := a.Withdraw(5)
 
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	expectBalance(t, a, 5)
 }
 
@@ -125,7 +125,7 @@ func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
 
 	err := a.Withdraw(5)
 
-	test.ExpectError(t, err, "insufficient balance")
+	assert.EqualError(t, err, "insufficient balance")
 }
 
 func TestCanNotWithdrawNegativeAmount(t *testing.T) {
@@ -137,7 +137,7 @@ func TestCanNotWithdrawNegativeAmount(t *testing.T) {
 
 	err := a.Withdraw(-1)
 
-	test.ExpectError(t, err, "can not withdraw negative amount")
+	assert.EqualError(t, err, "can not withdraw negative amount")
 }
 
 func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
@@ -149,7 +149,7 @@ func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
 
 	err := a.Withdraw(0)
 
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestRequireOpenAccountForWithdrawal(t *testing.T) {
@@ -157,7 +157,7 @@ func TestRequireOpenAccountForWithdrawal(t *testing.T) {
 
 	err := a.Withdraw(0)
 
-	test.ExpectError(t, err, "account not open")
+	assert.EqualError(t, err, "account not open")
 }
 
 func TestCloseAccount(t *testing.T) {
@@ -169,7 +169,7 @@ func TestCloseAccount(t *testing.T) {
 
 	err := a.Close()
 
-	test.ExpectNoError(t, err)
+	assert.NoError(t, err)
 	if a.open != false {
 		t.Error("Account should be closed")
 	}
@@ -185,7 +185,7 @@ func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
 
 	err := a.Close()
 
-	test.ExpectError(t, err, "balance outstanding")
+	assert.EqualError(t, err, "balance outstanding")
 }
 
 func TestApplyEvents(t *testing.T) {
