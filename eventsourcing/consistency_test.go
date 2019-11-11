@@ -19,7 +19,7 @@ func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s accou
 		wg := sync.WaitGroup{}
 		wg.Add(f.concurrentUsers)
 		for j := 0; j < f.concurrentUsers; j++ {
-			go withRetryOnConcurrentModification(t, &wg, j, func() error {
+			go withRetryOnConcurrentModification(t, &wg, i, j, func() error {
 				return action(f.accountService)
 			})
 		}
@@ -27,7 +27,21 @@ func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s accou
 	}
 }
 
-func newConsistencyTestFixture(t *testing.T, snapshottingFrequency int) *consistencyTestFixture {
+func (f consistencyTestFixture) doConcurrentTransactions(t *testing.T, action func(s accountService, txId uuid.UUID) error) {
+	for i := 0; i < f.operationCount; i++ {
+		var txId = uuid.New()
+		wg := sync.WaitGroup{}
+		wg.Add(f.concurrentUsers)
+		for j := 0; j < f.concurrentUsers; j++ {
+			go withRetryOnConcurrentModification(t, &wg, i, j, func() error {
+				return action(f.accountService, txId)
+			})
+		}
+		wg.Wait()
+	}
+}
+
+func newConsistencyTestFixture(snapshottingFrequency int) *consistencyTestFixture {
 	accountService := accountService{*NewAccountRepository(newInMemoryStore(), snapshottingFrequency)}
 
 	return &consistencyTestFixture{
@@ -37,7 +51,7 @@ func newConsistencyTestFixture(t *testing.T, snapshottingFrequency int) *consist
 	}
 }
 
-func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, threadNo int, operation func() error) {
+func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, iteration, threadNo int, operation func() error) {
 	//fmt.Printf("thread %v\n", threadNo)
 	for {
 		err := operation()
@@ -46,7 +60,12 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, threadN
 		}
 		//fmt.Printf("thread %v retrying...\n", threadNo)
 		if err.Error() != "concurrent modification error" {
-			t.Errorf("Expecting only concurrent modification errors, got %v", err.Error())
+			t.Errorf(
+				"Expecting only concurrent modification errors, got %v, threadNo %v, iteration %v",
+				err.Error(),
+				threadNo,
+				iteration,
+			)
 			break
 		}
 	}
@@ -54,7 +73,7 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, threadN
 }
 
 func testConcurrentDeposits(t *testing.T, snapshottingFrequency int) {
-	fixture := newConsistencyTestFixture(t, snapshottingFrequency)
+	fixture := newConsistencyTestFixture(snapshottingFrequency)
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := fixture.accountService.OpenAccount(id, ownerId)
@@ -71,7 +90,7 @@ func testConcurrentDeposits(t *testing.T, snapshottingFrequency int) {
 
 func testConcurrentTransfers(t *testing.T, snapshottingFrequency int) {
 	// given
-	fixture := newConsistencyTestFixture(t, snapshottingFrequency)
+	fixture := newConsistencyTestFixture(snapshottingFrequency)
 
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := fixture.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
@@ -100,6 +119,37 @@ func testConcurrentTransfers(t *testing.T, snapshottingFrequency int) {
 	assert.Equal(t, int64(fixture.operationCount*fixture.concurrentUsers+fixture.operationCount), targetSnapshot.Balance)
 }
 
+func testConcurrentIdempotentTransfers(t *testing.T, snapshottingFrequency int) {
+	// given
+	fixture := newConsistencyTestFixture(snapshottingFrequency)
+
+	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	err := fixture.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
+	assert.NoError(t, err)
+	err = fixture.accountService.Deposit(sourceAccountId, uuid.New(), int64(fixture.operationCount))
+	assert.NoError(t, err)
+
+	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
+	err = fixture.accountService.OpenAccount(targetAccountId, targetOwnerId)
+	assert.NoError(t, err)
+	err = fixture.accountService.Deposit(targetAccountId, uuid.New(), int64(fixture.operationCount))
+	assert.NoError(t, err)
+
+	// when
+	fixture.doConcurrentTransactions(t, func(s accountService, txId uuid.UUID) error {
+		return s.Transfer(sourceAccountId, targetAccountId, txId, 1)
+	})
+
+	// then
+	sourceSnapshot, err := fixture.accountService.QueryAccount(sourceAccountId)
+	assert.NoError(t, err)
+	assert.Zero(t, sourceSnapshot.Balance)
+
+	targetSnapshot, err := fixture.accountService.QueryAccount(targetAccountId)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(fixture.operationCount*2), targetSnapshot.Balance)
+}
+
 func TestConcurrentDeposits(t *testing.T) {
 	testConcurrentDeposits(t, 0)
 }
@@ -114,4 +164,12 @@ func TestConcurrentTransfers(t *testing.T) {
 
 func TestConcurrentTransfersWithSnapshotting(t *testing.T) {
 	testConcurrentTransfers(t, 5)
+}
+
+func TestConcurrentIdempotentTransfers(t *testing.T) {
+	testConcurrentIdempotentTransfers(t, 0)
+}
+
+func TestConcurrentIdempotentTransfersWithSnapshotting(t *testing.T) {
+	testConcurrentIdempotentTransfers(t, 5)
 }

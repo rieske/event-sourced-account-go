@@ -37,19 +37,14 @@ func (r repository) create(id account.Id, tx transaction) error {
 }
 
 func (r repository) transact(id account.Id, txId uuid.UUID, tx transaction) error {
+	a := r.loadAggregate(id)
 	if r.store.TransactionExists(id, txId) {
 		return nil
 	}
-
-	a := r.loadAggregate(id)
 	return a.transact(tx, txId)
 }
 
 func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx biTransaction) error {
-	if r.store.TransactionExists(sourceId, txId) || r.store.TransactionExists(targetId, txId) {
-		return nil
-	}
-
 	es := r.newEventStream()
 	source, err := es.replay(sourceId)
 	if err != nil {
@@ -60,6 +55,9 @@ func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx
 		return err
 	}
 
+	if r.store.TransactionExists(sourceId, txId) || r.store.TransactionExists(targetId, txId) {
+		return nil
+	}
 	err = tx(source, target)
 	if err != nil {
 		return err
@@ -84,11 +82,11 @@ func (r repository) newAggregate(id account.Id) aggregate {
 	return a
 }
 
-func (r repository) loadAggregate(id account.Id) aggregate {
+func (r repository) loadAggregate(id account.Id) *aggregate {
 	a := aggregate{}
 	a.es = r.newEventStream()
 	a.acc, a.err = a.es.replay(id)
-	return a
+	return &a
 }
 
 type aggregate struct {

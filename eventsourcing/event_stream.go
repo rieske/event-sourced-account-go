@@ -15,7 +15,7 @@ type sequencedEvent struct {
 type eventStore interface {
 	Events(id account.Id, version int) []sequencedEvent
 	Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent, txId uuid.UUID) error
-	LoadSnapshot(id account.Id) *sequencedEvent
+	LoadSnapshot(id account.Id) sequencedEvent
 	TransactionExists(id account.Id, txId uuid.UUID) bool
 }
 
