@@ -18,16 +18,16 @@ type Aggregate interface {
 	applyAccountClosed(event AccountClosedEvent)
 }
 
-type EventStream interface {
+type EventAppender interface {
 	Append(e Event, a Aggregate, id Id)
 }
 
 type Account struct {
-	es      EventStream
-	id      Id
-	ownerId OwnerId
-	balance int64
-	open    bool
+	eventAppender EventAppender
+	id            Id
+	ownerId       OwnerId
+	balance       int64
+	open          bool
 }
 
 func NewAccountId() Id {
@@ -38,8 +38,8 @@ func NewOwnerId() OwnerId {
 	return OwnerId(uuid.New())
 }
 
-func NewAccount(es EventStream) *Account {
-	return &Account{es: es}
+func NewAccount(es EventAppender) *Account {
+	return &Account{eventAppender: es}
 }
 
 func (a Account) Id() Id {
@@ -56,7 +56,7 @@ func (a *Account) Open(accountId Id, ownerId OwnerId) error {
 	}
 
 	event := AccountOpenedEvent{accountId, ownerId}
-	a.es.Append(event, a, accountId)
+	a.eventAppender.Append(event, a, accountId)
 	return nil
 }
 
@@ -72,7 +72,7 @@ func (a *Account) Deposit(amount int64) error {
 	}
 
 	event := MoneyDepositedEvent{amount, a.balance + amount}
-	a.es.Append(event, a, a.id)
+	a.eventAppender.Append(event, a, a.id)
 	return nil
 }
 
@@ -91,7 +91,7 @@ func (a *Account) Withdraw(amount int64) error {
 	}
 
 	event := MoneyWithdrawnEvent{amount, a.balance - amount}
-	a.es.Append(event, a, a.id)
+	a.eventAppender.Append(event, a, a.id)
 	return nil
 }
 
@@ -101,7 +101,7 @@ func (a *Account) Close() error {
 	}
 
 	event := AccountClosedEvent{}
-	a.es.Append(event, a, a.id)
+	a.eventAppender.Append(event, a, a.id)
 	return nil
 }
 
