@@ -9,7 +9,6 @@ import (
 
 type consistencyTestFixture struct {
 	accountService  accountService
-	aggregateId     account.Id
 	operationCount  int
 	concurrentUsers int
 }
@@ -27,16 +26,11 @@ func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s accou
 	}
 }
 
-func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixture {
+func newConsistencyTestFixture(t *testing.T, snapshottingFrequency int) *consistencyTestFixture {
 	accountService := accountService{*NewAccountRepository(newInMemoryStore(), snapshottingFrequency)}
-
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := accountService.OpenAccount(id, ownerId)
-	assert.NoError(t, err)
 
 	return &consistencyTestFixture{
 		accountService:  accountService,
-		aggregateId:     id,
 		operationCount:  100,
 		concurrentUsers: 8,
 	}
@@ -51,22 +45,58 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, threadN
 		}
 		//fmt.Printf("thread %v retrying...\n", threadNo)
 		if err.Error() != "concurrent modification error" {
-			t.Error("Expecting only concurrent modification errors")
+			t.Errorf("Expecting only concurrent modification errors, got %v", err.Error())
+			break
 		}
 	}
 	wg.Done()
 }
 
 func testConcurrentDeposits(t *testing.T, snapshottingFrequency int) {
-	fixture := openAccount(t, snapshottingFrequency)
+	fixture := newConsistencyTestFixture(t, snapshottingFrequency)
+
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	err := fixture.accountService.OpenAccount(id, ownerId)
+	assert.NoError(t, err)
 
 	fixture.doConcurrently(t, func(s accountService) error {
-		return s.Deposit(fixture.aggregateId, 1)
+		return s.Deposit(id, 1)
 	})
 
-	snapshot, err := fixture.accountService.QueryAccount(fixture.aggregateId)
+	snapshot, err := fixture.accountService.QueryAccount(id)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(fixture.operationCount*fixture.concurrentUsers), snapshot.Balance)
+}
+
+func testConcurrentTransfers(t *testing.T, snapshottingFrequency int) {
+	// given
+	fixture := newConsistencyTestFixture(t, 0)
+
+	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	err := fixture.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
+	assert.NoError(t, err)
+	err = fixture.accountService.Deposit(sourceAccountId, int64(fixture.operationCount*fixture.concurrentUsers))
+	assert.NoError(t, err)
+
+	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
+	err = fixture.accountService.OpenAccount(targetAccountId, targetOwnerId)
+	assert.NoError(t, err)
+	err = fixture.accountService.Deposit(targetAccountId, int64(fixture.operationCount))
+	assert.NoError(t, err)
+
+	// when
+	fixture.doConcurrently(t, func(s accountService) error {
+		return s.Transfer(sourceAccountId, targetAccountId, 1)
+	})
+
+	// then
+	sourceSnapshot, err := fixture.accountService.QueryAccount(sourceAccountId)
+	assert.NoError(t, err)
+	assert.Zero(t, sourceSnapshot.Balance)
+
+	targetSnapshot, err := fixture.accountService.QueryAccount(targetAccountId)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(fixture.operationCount*fixture.concurrentUsers+fixture.operationCount), targetSnapshot.Balance)
 }
 
 func TestConcurrentDeposits(t *testing.T) {
@@ -75,4 +105,12 @@ func TestConcurrentDeposits(t *testing.T) {
 
 func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
 	testConcurrentDeposits(t, 5)
+}
+
+func TestConcurrentTransfers(t *testing.T) {
+	testConcurrentTransfers(t, 0)
+}
+
+func TestConcurrentTransfersWithSnapshotting(t *testing.T) {
+	testConcurrentTransfers(t, 5)
 }
