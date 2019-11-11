@@ -8,18 +8,8 @@ import (
 type Id uuid.UUID
 type OwnerId uuid.UUID
 
-type Aggregate interface {
-	Snapshot() Snapshot
-
-	applySnapshot(snapshot Snapshot)
-	applyAccountOpened(event AccountOpenedEvent)
-	applyMoneyDeposited(event MoneyDepositedEvent)
-	applyMoneyWithdrawn(event MoneyWithdrawnEvent)
-	applyAccountClosed(event AccountClosedEvent)
-}
-
 type EventAppender interface {
-	Append(e Event, a Aggregate, id Id)
+	Append(e Event, a *Account, id Id)
 }
 
 type Account struct {
@@ -138,6 +128,6 @@ type Snapshot struct {
 	Open    bool
 }
 
-func (s Snapshot) Apply(a Aggregate) {
+func (s Snapshot) Apply(a *Account) {
 	a.applySnapshot(s)
 }

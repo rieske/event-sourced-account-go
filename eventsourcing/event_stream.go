@@ -37,7 +37,7 @@ func NewEventStream(es eventStore, snapshotFrequency int) *transactionalEventStr
 	}
 }
 
-func (s transactionalEventStream) applySnapshot(id account.Id, a account.Aggregate) int {
+func (s transactionalEventStream) applySnapshot(id account.Id, a *account.Account) int {
 	snapshot := s.eventStore.LoadSnapshot(id)
 	if snapshot.event != nil {
 		snapshot.event.Apply(a)
@@ -64,7 +64,7 @@ func (s *transactionalEventStream) replay(id account.Id) (*account.Account, erro
 	return a, nil
 }
 
-func (s *transactionalEventStream) Append(e account.Event, a account.Aggregate, id account.Id) {
+func (s *transactionalEventStream) Append(e account.Event, a *account.Account, id account.Id) {
 	e.Apply(a)
 	version := s.versions[id] + 1
 	s.versions[id] = version

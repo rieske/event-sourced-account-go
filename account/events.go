@@ -1,7 +1,7 @@
 package account
 
 type Event interface {
-	Apply(account Aggregate)
+	Apply(account *Account)
 	//Serialize() []byte
 }
 
@@ -10,7 +10,7 @@ type AccountOpenedEvent struct {
 	OwnerId   OwnerId
 }
 
-func (e AccountOpenedEvent) Apply(account Aggregate) {
+func (e AccountOpenedEvent) Apply(account *Account) {
 	account.applyAccountOpened(e)
 }
 
@@ -19,7 +19,7 @@ type MoneyDepositedEvent struct {
 	Balance         int64
 }
 
-func (e MoneyDepositedEvent) Apply(account Aggregate) {
+func (e MoneyDepositedEvent) Apply(account *Account) {
 	account.applyMoneyDeposited(e)
 }
 
@@ -28,14 +28,14 @@ type MoneyWithdrawnEvent struct {
 	Balance         int64
 }
 
-func (e MoneyWithdrawnEvent) Apply(account Aggregate) {
+func (e MoneyWithdrawnEvent) Apply(account *Account) {
 	account.applyMoneyWithdrawn(e)
 }
 
 type AccountClosedEvent struct {
 }
 
-func (e AccountClosedEvent) Apply(account Aggregate) {
+func (e AccountClosedEvent) Apply(account *Account) {
 	account.applyAccountClosed(e)
 }
 
