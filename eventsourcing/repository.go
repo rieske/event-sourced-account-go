@@ -30,12 +30,9 @@ func (r Repository) Query(id account.Id) (*account.Snapshot, error) {
 	return &snapshot, nil
 }
 
-// TODO: refactor to Create
-func (r Repository) Open(id account.Id, ownerId account.OwnerId) error {
+func (r Repository) Create(id account.Id, tx transaction) error {
 	a := r.newAggregate(id)
-	return a.transact(func(a *account.Account) error {
-		return a.Open(id, ownerId)
-	})
+	return a.transact(tx)
 }
 
 func (r Repository) Transact(id account.Id, tx transaction) error {

@@ -19,7 +19,9 @@ func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixtur
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.Open(id, ownerId)
+	err := repo.Create(id, func(a *account.Account) error {
+		return a.Open(id, ownerId)
+	})
 	assert.NoError(t, err)
 
 	return &consistencyTestFixture{store, *repo, id}

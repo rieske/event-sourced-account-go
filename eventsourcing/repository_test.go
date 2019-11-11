@@ -12,7 +12,9 @@ func TestAccountRepository_Open(t *testing.T) {
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.Open(id, ownerId)
+	err := repo.Create(id, func(a *account.Account) error {
+		return a.Open(id, ownerId)
+	})
 	assert.NoError(t, err)
 }
 
@@ -22,10 +24,14 @@ func TestAccountRepository_CanNotOpenDuplicateAccount(t *testing.T) {
 
 	id := account.NewAccountId()
 	ownerId := account.NewOwnerId()
-	err := repo.Open(id, ownerId)
+	err := repo.Create(id, func(a *account.Account) error {
+		return a.Open(id, ownerId)
+	})
 	assert.NoError(t, err)
 
-	err = repo.Open(id, ownerId)
+	err = repo.Create(id, func(a *account.Account) error {
+		return a.Open(id, ownerId)
+	})
 	assert.EqualError(t, err, "account already exists")
 }
 
@@ -34,10 +40,16 @@ func TestAccountRepository_CanOpenDistinctAccounts(t *testing.T) {
 	repo := NewAccountRepository(store, 0)
 
 	ownerId := account.NewOwnerId()
-	err := repo.Open(account.NewAccountId(), ownerId)
+	id := account.NewAccountId()
+	err := repo.Create(id, func(a *account.Account) error {
+		return a.Open(id, ownerId)
+	})
 	assert.NoError(t, err)
 
-	err = repo.Open(account.NewAccountId(), ownerId)
+	id = account.NewAccountId()
+	err = repo.Create(id, func(a *account.Account) error {
+		return a.Open(id, ownerId)
+	})
 	assert.NoError(t, err)
 }
 
