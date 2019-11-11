@@ -43,3 +43,7 @@ func (s accountService) Transfer(sourceAccountId account.Id, targetAccountId acc
 func (s accountService) QueryAccount(id account.Id) (*account.Snapshot, error) {
 	return s.repo.query(id)
 }
+
+func (s accountService) Events(id account.Id) []sequencedEvent {
+	return s.repo.store.Events(id, 0)
+}
