@@ -74,8 +74,7 @@ func (r Repository) newAggregate(id account.Id) aggregate {
 		return a
 	}
 	a.es = r.newEventStream()
-	acc := account.NewAccount(a.es)
-	a.acc = acc
+	a.acc = account.NewAccount(a.es)
 	return a
 }
 
