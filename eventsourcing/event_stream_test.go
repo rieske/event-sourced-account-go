@@ -28,11 +28,11 @@ func (f *esTestFixture) givenSnapshot(snapshot sequencedEvent) {
 }
 
 func (f *esTestFixture) makeEventStream() *eventStream {
-	return NewEventStream(f.store, 0)
+	return newEventStream(f.store, 0)
 }
 
 func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *eventStream {
-	return NewEventStream(f.store, snapshotFrequency)
+	return newEventStream(f.store, snapshotFrequency)
 }
 
 func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.Id, event account.Event) {
@@ -218,7 +218,7 @@ func TestCommitInSequence(t *testing.T) {
 func TestCommitOutOfSequence(t *testing.T) {
 	// given account exists
 	store := newInMemoryStore()
-	es := NewEventStream(store, 0)
+	es := newEventStream(store, 0)
 
 	a := account.Account{}
 	id := account.NewAccountId()
@@ -227,14 +227,14 @@ func TestCommitOutOfSequence(t *testing.T) {
 	err := es.commit()
 	assert.NoError(t, err)
 
-	es1 := NewEventStream(store, 0)
+	es1 := newEventStream(store, 0)
 	a1, err := es1.replay(id)
 	assert.NoError(t, err)
 
 	e1 := account.MoneyDepositedEvent{10, 10}
 	es1.Append(e1, a1, id)
 
-	es2 := NewEventStream(store, 0)
+	es2 := newEventStream(store, 0)
 	a2, err := es2.replay(id)
 	assert.NoError(t, err)
 

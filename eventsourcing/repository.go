@@ -18,10 +18,10 @@ func NewAccountRepository(es eventStore, snapshotFrequency int) *repository {
 }
 
 func (r repository) newEventStream() *eventStream {
-	return NewEventStream(r.store, r.snapshotFrequency)
+	return newEventStream(r.store, r.snapshotFrequency)
 }
 
-func (r repository) Query(id account.Id) (*account.Snapshot, error) {
+func (r repository) query(id account.Id) (*account.Snapshot, error) {
 	a := r.loadAggregate(id)
 	if a.err != nil {
 		return nil, a.err

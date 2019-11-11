@@ -25,7 +25,7 @@ type eventStream struct {
 	uncommittedSnapshots map[account.Id]sequencedEvent
 }
 
-func NewEventStream(es eventStore, snapshotFrequency int) *eventStream {
+func newEventStream(es eventStore, snapshotFrequency int) *eventStream {
 	if snapshotFrequency < 0 {
 		panic("snapshot frequency can not be negative")
 	}

@@ -57,7 +57,7 @@ func TestConcurrentDeposits(t *testing.T) {
 		wg.Wait()
 	}
 
-	snapshot, err := fixture.repo.Query(fixture.aggregateId)
+	snapshot, err := fixture.accountService.QueryAccount(fixture.aggregateId)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(operationCount*concurrentUsers), snapshot.Balance)
 }
@@ -79,7 +79,7 @@ func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
 		wg.Wait()
 	}
 
-	snapshot, err := fixture.repo.Query(fixture.aggregateId)
+	snapshot, err := fixture.accountService.QueryAccount(fixture.aggregateId)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(operationCount*concurrentUsers), snapshot.Balance)
 }

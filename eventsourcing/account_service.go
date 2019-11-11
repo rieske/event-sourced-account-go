@@ -39,3 +39,7 @@ func (s accountService) Transfer(sourceAccountId account.Id, targetAccountId acc
 		return target.Deposit(amount)
 	})
 }
+
+func (s accountService) QueryAccount(id account.Id) (*account.Snapshot, error) {
+	return s.repo.query(id)
+}
