@@ -15,8 +15,7 @@ func newAccountService() accountService {
 func TestOpenAccount(t *testing.T) {
 	service := newAccountService()
 
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 }
@@ -24,8 +23,7 @@ func TestOpenAccount(t *testing.T) {
 func TestCanNotOpenDuplicateAccount(t *testing.T) {
 	service := newAccountService()
 
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
@@ -36,8 +34,7 @@ func TestCanNotOpenDuplicateAccount(t *testing.T) {
 func TestCanOpenDistinctAccounts(t *testing.T) {
 	service := newAccountService()
 
-	ownerId := account.NewOwnerId()
-	id := account.NewAccountId()
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
@@ -62,8 +59,7 @@ func TestEventSourcing_Deposit(t *testing.T) {
 	// given
 	service := newAccountService()
 
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
@@ -86,8 +82,7 @@ func TestEventSourcing_Withdraw(t *testing.T) {
 	// given
 	service := newAccountService()
 
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
@@ -113,10 +108,8 @@ func TestTransferMoney(t *testing.T) {
 	// given
 	service := newAccountService()
 
-	sourceAccountId := account.NewAccountId()
-	sourceOwnerId := account.NewOwnerId()
-	targetAccountId := account.NewAccountId()
-	targetOwnerId := account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
@@ -147,10 +140,8 @@ func TestTransferMoney(t *testing.T) {
 func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	// given
 	service := newAccountService()
-	sourceAccountId := account.NewAccountId()
-	sourceOwnerId := account.NewOwnerId()
-	targetAccountId := account.NewAccountId()
-	targetOwnerId := account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
@@ -179,8 +170,7 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	// given
 	service := newAccountService()
-	sourceAccountId := account.NewAccountId()
-	sourceOwnerId := account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
 		[]sequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},

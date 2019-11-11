@@ -18,8 +18,7 @@ func openAccount(t *testing.T, snapshottingFrequency int) *consistencyTestFixtur
 	repo := NewAccountRepository(store, snapshottingFrequency)
 	accountService := accountService{*repo}
 
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := accountService.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 

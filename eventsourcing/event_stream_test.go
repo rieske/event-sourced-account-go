@@ -53,9 +53,8 @@ func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId account.Id,
 }
 
 func TestReplayEvents(t *testing.T) {
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
 	fixture := newInMemoryFixture(t)
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	fixture.givenEvents([]sequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{42, 42}},
@@ -78,9 +77,8 @@ func TestReplayEvents(t *testing.T) {
 }
 
 func TestReplayEventsWithSnapshot(t *testing.T) {
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
 	fixture := newInMemoryFixture(t)
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	fixture.givenSnapshot(sequencedEvent{id, 5, account.Snapshot{id, ownerId, 40, true}})
 	fixture.givenEvents([]sequencedEvent{
 		{id, 6, account.MoneyDepositedEvent{10, 50}},
@@ -136,8 +134,7 @@ func TestCommit(t *testing.T) {
 func TestAppendEventWithSnapshot(t *testing.T) {
 	// given
 	fixture := newInMemoryFixture(t)
-	id := account.NewAccountId()
-	ownerId := account.NewOwnerId()
+	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	fixture.givenEvents([]sequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{10, 10}},
@@ -223,9 +220,8 @@ func TestCommitOutOfSequence(t *testing.T) {
 	store := newInMemoryStore()
 	es := NewEventStream(store, 0)
 
-	id := account.NewAccountId()
-
 	a := account.Account{}
+	id := account.NewAccountId()
 	accountOpenedEvent := account.AccountOpenedEvent{id, account.NewOwnerId()}
 	es.Append(accountOpenedEvent, &a, id)
 	err := es.commit()
