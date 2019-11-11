@@ -2,18 +2,23 @@ package eventsourcing
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"sync"
 )
 
 type inmemoryEeventstore struct {
-	events    []sequencedEvent
-	snapshots map[account.Id]sequencedEvent
-	mutex     sync.Mutex
+	events       []sequencedEvent
+	snapshots    map[account.Id]sequencedEvent
+	transactions map[account.Id]uuid.UUID
+	mutex        sync.Mutex
 }
 
 func newInMemoryStore() *inmemoryEeventstore {
-	return &inmemoryEeventstore{snapshots: map[account.Id]sequencedEvent{}}
+	return &inmemoryEeventstore{
+		snapshots:    map[account.Id]sequencedEvent{},
+		transactions: map[account.Id]uuid.UUID{},
+	}
 }
 
 func (es *inmemoryEeventstore) Events(id account.Id, version int) []sequencedEvent {
@@ -37,7 +42,7 @@ func (es *inmemoryEeventstore) LoadSnapshot(id account.Id) *sequencedEvent {
 // Events can only be written in sequence per aggregate.
 // One way to ensure this in RDB - primary key on (aggregateId, sequenceNumber)
 // Event writes have to happen in a transaction - either all get written or none
-func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent) error {
+func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent, txId uuid.UUID) error {
 	es.mutex.Lock()
 	for _, e := range events {
 		if e.seq <= es.latestVersion(e.aggregateId) {
@@ -45,6 +50,7 @@ func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[acc
 			return errors.New("concurrent modification error")
 		}
 		es.events = append(es.events, e)
+		es.transactions[e.aggregateId] = txId
 	}
 	for id, snapshot := range snapshots {
 		es.snapshots[id] = snapshot
@@ -59,4 +65,11 @@ func (es *inmemoryEeventstore) latestVersion(id account.Id) int {
 		aggVersions[e.aggregateId] = e.seq
 	}
 	return aggVersions[id]
+}
+
+func (es *inmemoryEeventstore) TransactionExists(id account.Id, txId uuid.UUID) bool {
+	es.mutex.Lock()
+	transactionExists := es.transactions[id] == txId
+	es.mutex.Unlock()
+	return transactionExists
 }

@@ -1,6 +1,7 @@
 package eventsourcing
 
 import (
+	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -60,7 +61,7 @@ func testConcurrentDeposits(t *testing.T, snapshottingFrequency int) {
 	assert.NoError(t, err)
 
 	fixture.doConcurrently(t, func(s accountService) error {
-		return s.Deposit(id, 1)
+		return s.Deposit(id, uuid.New(), 1)
 	})
 
 	snapshot, err := fixture.accountService.QueryAccount(id)
@@ -75,18 +76,18 @@ func testConcurrentTransfers(t *testing.T, snapshottingFrequency int) {
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := fixture.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
 	assert.NoError(t, err)
-	err = fixture.accountService.Deposit(sourceAccountId, int64(fixture.operationCount*fixture.concurrentUsers))
+	err = fixture.accountService.Deposit(sourceAccountId, uuid.New(), int64(fixture.operationCount*fixture.concurrentUsers))
 	assert.NoError(t, err)
 
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err = fixture.accountService.OpenAccount(targetAccountId, targetOwnerId)
 	assert.NoError(t, err)
-	err = fixture.accountService.Deposit(targetAccountId, int64(fixture.operationCount))
+	err = fixture.accountService.Deposit(targetAccountId, uuid.New(), int64(fixture.operationCount))
 	assert.NoError(t, err)
 
 	// when
 	fixture.doConcurrently(t, func(s accountService) error {
-		return s.Transfer(sourceAccountId, targetAccountId, 1)
+		return s.Transfer(sourceAccountId, targetAccountId, uuid.New(), 1)
 	})
 
 	// then

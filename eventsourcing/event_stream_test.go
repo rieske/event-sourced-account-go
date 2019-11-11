@@ -1,6 +1,7 @@
 package eventsourcing
 
 import (
+	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -16,14 +17,18 @@ func newInMemoryFixture(t *testing.T) esTestFixture {
 }
 
 func (f *esTestFixture) givenEvents(events []sequencedEvent) {
-	err := f.store.Append(events, map[account.Id]sequencedEvent{})
+	err := f.store.Append(events, map[account.Id]sequencedEvent{}, uuid.New())
 	assert.NoError(f.t, err)
 }
 
 func (f *esTestFixture) givenSnapshot(snapshot sequencedEvent) {
-	err := f.store.Append(nil, map[account.Id]sequencedEvent{
-		snapshot.aggregateId: snapshot,
-	})
+	err := f.store.Append(
+		nil,
+		map[account.Id]sequencedEvent{
+			snapshot.aggregateId: snapshot,
+		},
+		uuid.New(),
+	)
 	assert.NoError(f.t, err)
 }
 
@@ -123,7 +128,7 @@ func TestCommit(t *testing.T) {
 	event := account.AccountOpenedEvent{id, account.NewOwnerId()}
 	a := account.Account{}
 	es.Append(event, &a, id)
-	err := es.commit()
+	err := es.commit(uuid.New())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(es.uncommittedEvents))
@@ -183,7 +188,7 @@ func TestCommitWithSnapshot(t *testing.T) {
 	es.Append(event, a, id)
 
 	// when
-	err = es.commit()
+	err = es.commit(uuid.New())
 	assert.NoError(t, err)
 
 	// then
@@ -205,7 +210,7 @@ func TestCommitInSequence(t *testing.T) {
 	depositEvent := account.MoneyDepositedEvent{42, 42}
 	es.Append(depositEvent, &a, id)
 
-	err := es.commit()
+	err := es.commit(uuid.New())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(es.uncommittedEvents))
@@ -224,7 +229,7 @@ func TestCommitOutOfSequence(t *testing.T) {
 	id := account.NewAccountId()
 	accountOpenedEvent := account.AccountOpenedEvent{id, account.NewOwnerId()}
 	es.Append(accountOpenedEvent, &a, id)
-	err := es.commit()
+	err := es.commit(uuid.New())
 	assert.NoError(t, err)
 
 	es1 := newEventStream(store, 0)
@@ -241,10 +246,10 @@ func TestCommitOutOfSequence(t *testing.T) {
 	e2 := account.MoneyDepositedEvent{10, 10}
 	es2.Append(e2, a2, id)
 
-	err = es1.commit()
+	err = es1.commit(uuid.New())
 	assert.NoError(t, err)
 
-	err = es2.commit()
+	err = es2.commit(uuid.New())
 	if err == nil {
 		t.Error("Expected concurrent modification error")
 	}

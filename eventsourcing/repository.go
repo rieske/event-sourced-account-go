@@ -2,6 +2,7 @@ package eventsourcing
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 )
 
@@ -32,15 +33,23 @@ func (r repository) query(id account.Id) (*account.Snapshot, error) {
 
 func (r repository) create(id account.Id, tx transaction) error {
 	a := r.newAggregate(id)
-	return a.transact(tx)
+	return a.transact(tx, uuid.New())
 }
 
-func (r repository) transact(id account.Id, tx transaction) error {
+func (r repository) transact(id account.Id, txId uuid.UUID, tx transaction) error {
+	if r.store.TransactionExists(id, txId) {
+		return nil
+	}
+
 	a := r.loadAggregate(id)
-	return a.transact(tx)
+	return a.transact(tx, txId)
 }
 
-func (r repository) biTransact(sourceId, targetId account.Id, tx biTransaction) error {
+func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx biTransaction) error {
+	if r.store.TransactionExists(sourceId, txId) || r.store.TransactionExists(targetId, txId) {
+		return nil
+	}
+
 	es := r.newEventStream()
 	source, err := es.replay(sourceId)
 	if err != nil {
@@ -56,7 +65,7 @@ func (r repository) biTransact(sourceId, targetId account.Id, tx biTransaction) 
 		return err
 	}
 
-	return es.commit()
+	return es.commit(txId)
 }
 
 func (r repository) aggregateExists(id account.Id) bool {
@@ -88,7 +97,7 @@ type aggregate struct {
 	err error
 }
 
-func (a *aggregate) transact(tx transaction) error {
+func (a *aggregate) transact(tx transaction, txId uuid.UUID) error {
 	if a.err != nil {
 		return a.err
 	}
@@ -97,5 +106,5 @@ func (a *aggregate) transact(tx transaction) error {
 		return err
 	}
 
-	return a.es.commit()
+	return a.es.commit(txId)
 }

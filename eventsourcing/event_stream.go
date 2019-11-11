@@ -2,6 +2,7 @@ package eventsourcing
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 )
 
@@ -13,8 +14,9 @@ type sequencedEvent struct {
 
 type eventStore interface {
 	Events(id account.Id, version int) []sequencedEvent
-	Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent) error
+	Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent, txId uuid.UUID) error
 	LoadSnapshot(id account.Id) *sequencedEvent
+	TransactionExists(id account.Id, txId uuid.UUID) bool
 }
 
 type eventStream struct {
@@ -75,8 +77,8 @@ func (s *eventStream) Append(e account.Event, a *account.Account, id account.Id)
 	}
 }
 
-func (s *eventStream) commit() error {
-	err := s.eventStore.Append(s.uncommittedEvents, s.uncommittedSnapshots)
+func (s *eventStream) commit(txId uuid.UUID) error {
+	err := s.eventStore.Append(s.uncommittedEvents, s.uncommittedSnapshots, txId)
 	if err != nil {
 		return err
 	}
