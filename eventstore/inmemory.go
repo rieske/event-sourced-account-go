@@ -7,27 +7,21 @@ import (
 	"sync"
 )
 
-type SequencedEvent struct {
-	AggregateId account.Id
-	Seq         int
-	Event       account.Event
-}
-
-type inmemoryEeventstore struct {
+type inmemoryStore struct {
 	events       []SequencedEvent
 	snapshots    map[account.Id]SequencedEvent
 	transactions map[account.Id][]uuid.UUID
 	mutex        sync.RWMutex
 }
 
-func NewInMemoryStore() *inmemoryEeventstore {
-	return &inmemoryEeventstore{
+func NewInMemoryStore() *inmemoryStore {
+	return &inmemoryStore{
 		snapshots:    map[account.Id]SequencedEvent{},
 		transactions: map[account.Id][]uuid.UUID{},
 	}
 }
 
-func (es *inmemoryEeventstore) Events(id account.Id, version int) []SequencedEvent {
+func (es *inmemoryStore) Events(id account.Id, version int) []SequencedEvent {
 	var events []SequencedEvent
 	for _, e := range es.events {
 		if e.AggregateId == id && e.Seq > version {
@@ -37,14 +31,14 @@ func (es *inmemoryEeventstore) Events(id account.Id, version int) []SequencedEve
 	return events
 }
 
-func (es *inmemoryEeventstore) LoadSnapshot(id account.Id) SequencedEvent {
+func (es *inmemoryStore) LoadSnapshot(id account.Id) SequencedEvent {
 	es.mutex.RLock()
 	defer es.mutex.RUnlock()
 
 	return es.snapshots[id]
 }
 
-func (es *inmemoryEeventstore) TransactionExists(id account.Id, txId uuid.UUID) bool {
+func (es *inmemoryStore) TransactionExists(id account.Id, txId uuid.UUID) bool {
 	es.mutex.RLock()
 	defer es.mutex.RUnlock()
 
@@ -55,7 +49,7 @@ func (es *inmemoryEeventstore) TransactionExists(id account.Id, txId uuid.UUID) 
 // Events can only be written in sequence per aggregate.
 // One way to ensure this in RDB - primary key on (aggregateId, sequenceNumber)
 // Event writes have to happen in a transaction - either all get written or none
-func (es *inmemoryEeventstore) Append(events []SequencedEvent, snapshots map[account.Id]SequencedEvent, txId uuid.UUID) error {
+func (es *inmemoryStore) Append(events []SequencedEvent, snapshots map[account.Id]SequencedEvent, txId uuid.UUID) error {
 	es.mutex.Lock()
 	defer es.mutex.Unlock()
 
@@ -74,7 +68,7 @@ func (es *inmemoryEeventstore) Append(events []SequencedEvent, snapshots map[acc
 	return nil
 }
 
-func (es *inmemoryEeventstore) validateConsistency(events []SequencedEvent, txId uuid.UUID) error {
+func (es *inmemoryStore) validateConsistency(events []SequencedEvent, txId uuid.UUID) error {
 	aggregateVersions := map[account.Id]int{}
 
 	for _, e := range events {
@@ -93,7 +87,7 @@ func (es *inmemoryEeventstore) validateConsistency(events []SequencedEvent, txId
 	return nil
 }
 
-func (es *inmemoryEeventstore) latestVersion(id account.Id) int {
+func (es *inmemoryStore) latestVersion(id account.Id) int {
 	latestVersion := 0
 	for _, e := range es.events {
 		if e.AggregateId == id {
@@ -103,7 +97,7 @@ func (es *inmemoryEeventstore) latestVersion(id account.Id) int {
 	return latestVersion
 }
 
-func (es *inmemoryEeventstore) transactionExists(transactions []uuid.UUID, txId uuid.UUID) bool {
+func (es *inmemoryStore) transactionExists(transactions []uuid.UUID, txId uuid.UUID) bool {
 	for _, tx := range transactions {
 		if tx == txId {
 			return true
