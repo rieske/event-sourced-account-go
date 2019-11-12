@@ -3,6 +3,7 @@ package eventsourcing
 import (
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventstore"
 )
 
 type accountService struct {
@@ -47,6 +48,6 @@ func (s accountService) QueryAccount(id account.Id) (*account.Snapshot, error) {
 	return s.repo.query(id)
 }
 
-func (s accountService) Events(id account.Id) []sequencedEvent {
+func (s accountService) Events(id account.Id) []eventstore.SequencedEvent {
 	return s.repo.store.Events(id, 0)
 }

@@ -3,6 +3,7 @@ package eventsourcing
 import (
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -42,7 +43,7 @@ func (f consistencyTestFixture) doConcurrentTransactions(t *testing.T, action fu
 }
 
 func newConsistencyTestFixture(snapshottingFrequency int) *consistencyTestFixture {
-	accountService := accountService{*NewAccountRepository(newInMemoryStore(), snapshottingFrequency)}
+	accountService := accountService{*NewAccountRepository(eventstore.NewInMemoryStore(), snapshottingFrequency)}
 
 	return &consistencyTestFixture{
 		accountService:  accountService,

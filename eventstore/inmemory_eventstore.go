@@ -1,4 +1,4 @@
-package eventsourcing
+package eventstore
 
 import (
 	"errors"
@@ -7,31 +7,37 @@ import (
 	"sync"
 )
 
+type SequencedEvent struct {
+	AggregateId account.Id
+	Seq         int
+	Event       account.Event
+}
+
 type inmemoryEeventstore struct {
-	events       []sequencedEvent
-	snapshots    map[account.Id]sequencedEvent
+	events       []SequencedEvent
+	snapshots    map[account.Id]SequencedEvent
 	transactions map[account.Id][]uuid.UUID
 	mutex        sync.RWMutex
 }
 
-func newInMemoryStore() *inmemoryEeventstore {
+func NewInMemoryStore() *inmemoryEeventstore {
 	return &inmemoryEeventstore{
-		snapshots:    map[account.Id]sequencedEvent{},
+		snapshots:    map[account.Id]SequencedEvent{},
 		transactions: map[account.Id][]uuid.UUID{},
 	}
 }
 
-func (es *inmemoryEeventstore) Events(id account.Id, version int) []sequencedEvent {
-	var events []sequencedEvent
+func (es *inmemoryEeventstore) Events(id account.Id, version int) []SequencedEvent {
+	var events []SequencedEvent
 	for _, e := range es.events {
-		if e.aggregateId == id && e.seq > version {
+		if e.AggregateId == id && e.Seq > version {
 			events = append(events, e)
 		}
 	}
 	return events
 }
 
-func (es *inmemoryEeventstore) LoadSnapshot(id account.Id) sequencedEvent {
+func (es *inmemoryEeventstore) LoadSnapshot(id account.Id) SequencedEvent {
 	es.mutex.RLock()
 	snapshot := es.snapshots[id]
 	es.mutex.RUnlock()
@@ -49,7 +55,7 @@ func (es *inmemoryEeventstore) TransactionExists(id account.Id, txId uuid.UUID) 
 // Events can only be written in sequence per aggregate.
 // One way to ensure this in RDB - primary key on (aggregateId, sequenceNumber)
 // Event writes have to happen in a transaction - either all get written or none
-func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[account.Id]sequencedEvent, txId uuid.UUID) error {
+func (es *inmemoryEeventstore) Append(events []SequencedEvent, snapshots map[account.Id]SequencedEvent, txId uuid.UUID) error {
 	es.mutex.Lock()
 	err := es.validateConsistency(events, txId)
 	if err != nil {
@@ -59,7 +65,7 @@ func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[acc
 
 	for _, e := range events {
 		es.events = append(es.events, e)
-		es.transactions[e.aggregateId] = append(es.transactions[e.aggregateId], txId)
+		es.transactions[e.AggregateId] = append(es.transactions[e.AggregateId], txId)
 	}
 	for id, snapshot := range snapshots {
 		es.snapshots[id] = snapshot
@@ -68,21 +74,21 @@ func (es *inmemoryEeventstore) Append(events []sequencedEvent, snapshots map[acc
 	return nil
 }
 
-func (es *inmemoryEeventstore) validateConsistency(events []sequencedEvent, txId uuid.UUID) error {
+func (es *inmemoryEeventstore) validateConsistency(events []SequencedEvent, txId uuid.UUID) error {
 	aggregateVersions := map[account.Id]int{}
 
 	for _, e := range events {
-		currentVersion := aggregateVersions[e.aggregateId]
+		currentVersion := aggregateVersions[e.AggregateId]
 		if currentVersion == 0 {
-			currentVersion = es.latestVersion(e.aggregateId)
+			currentVersion = es.latestVersion(e.AggregateId)
 		}
-		if es.transactionExists(es.transactions[e.aggregateId], txId) {
+		if es.transactionExists(es.transactions[e.AggregateId], txId) {
 			return errors.New("concurrent modification error")
 		}
-		if e.seq <= currentVersion {
+		if e.Seq <= currentVersion {
 			return errors.New("concurrent modification error")
 		}
-		aggregateVersions[e.aggregateId] = e.seq
+		aggregateVersions[e.AggregateId] = e.Seq
 	}
 	return nil
 }
@@ -90,8 +96,8 @@ func (es *inmemoryEeventstore) validateConsistency(events []sequencedEvent, txId
 func (es *inmemoryEeventstore) latestVersion(id account.Id) int {
 	latestVersion := 0
 	for _, e := range es.events {
-		if e.aggregateId == id {
-			latestVersion = e.seq
+		if e.AggregateId == id {
+			latestVersion = e.Seq
 		}
 	}
 	return latestVersion

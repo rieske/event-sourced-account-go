@@ -3,18 +3,19 @@ package eventsourcing
 import (
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func newAccountService() accountService {
-	store := newInMemoryStore()
+	store := eventstore.NewInMemoryStore()
 	repo := NewAccountRepository(store, 0)
 	return accountService{*repo}
 }
 
-func expectEvents(t *testing.T, actual, expected []sequencedEvent) {
-	assert.Equal(t, len(expected), len(actual), "event counts do not match")
+func expectEvents(t *testing.T, actual, expected []eventstore.SequencedEvent) {
+	assert.Equal(t, len(expected), len(actual), "Event counts do not match")
 	assert.Equal(t, expected, actual, "events do not match")
 }
 
@@ -67,10 +68,10 @@ func TestEventSourcing_Deposit(t *testing.T) {
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
-		[]sequencedEvent{
+		[]eventstore.SequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		},
-		map[account.Id]sequencedEvent{},
+		map[account.Id]eventstore.SequencedEvent{},
 		uuid.New(),
 	)
 
@@ -79,7 +80,7 @@ func TestEventSourcing_Deposit(t *testing.T) {
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service.Events(id), []sequencedEvent{
+	expectEvents(t, service.Events(id), []eventstore.SequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{42, 42}},
 	})
@@ -91,11 +92,11 @@ func TestEventSourcing_Withdraw(t *testing.T) {
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
-		[]sequencedEvent{
+		[]eventstore.SequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 			{id, 2, account.MoneyDepositedEvent{10, 10}},
 		},
-		map[account.Id]sequencedEvent{},
+		map[account.Id]eventstore.SequencedEvent{},
 		uuid.New(),
 	)
 	assert.NoError(t, err)
@@ -105,7 +106,7 @@ func TestEventSourcing_Withdraw(t *testing.T) {
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service.Events(id), []sequencedEvent{
+	expectEvents(t, service.Events(id), []eventstore.SequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{10, 10}},
 		{id, 3, account.MoneyWithdrawnEvent{2, 8}},
@@ -119,12 +120,12 @@ func TestTransferMoney(t *testing.T) {
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
-		[]sequencedEvent{
+		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		},
-		map[account.Id]sequencedEvent{},
+		map[account.Id]eventstore.SequencedEvent{},
 		uuid.New(),
 	)
 	assert.NoError(t, err)
@@ -134,12 +135,12 @@ func TestTransferMoney(t *testing.T) {
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service.Events(sourceAccountId), []sequencedEvent{
+	expectEvents(t, service.Events(sourceAccountId), []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		{sourceAccountId, 3, account.MoneyWithdrawnEvent{2, 8}},
 	})
-	expectEvents(t, service.Events(targetAccountId), []sequencedEvent{
+	expectEvents(t, service.Events(targetAccountId), []eventstore.SequencedEvent{
 		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		{targetAccountId, 2, account.MoneyDepositedEvent{2, 2}},
 	})
@@ -151,12 +152,12 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
-		[]sequencedEvent{
+		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		},
-		map[account.Id]sequencedEvent{},
+		map[account.Id]eventstore.SequencedEvent{},
 		uuid.New(),
 	)
 	assert.NoError(t, err)
@@ -166,11 +167,11 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 
 	// then
 	assert.EqualError(t, err, "insufficient balance")
-	expectEvents(t, service.Events(sourceAccountId), []sequencedEvent{
+	expectEvents(t, service.Events(sourceAccountId), []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
-	expectEvents(t, service.Events(targetAccountId), []sequencedEvent{
+	expectEvents(t, service.Events(targetAccountId), []eventstore.SequencedEvent{
 		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 	})
 }
@@ -180,11 +181,11 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	service := newAccountService()
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := service.repo.store.Append(
-		[]sequencedEvent{
+		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		},
-		map[account.Id]sequencedEvent{},
+		map[account.Id]eventstore.SequencedEvent{},
 		uuid.New(),
 	)
 	assert.NoError(t, err)
@@ -196,7 +197,7 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 
 	// then
 	assert.EqualError(t, err, "aggregate not found")
-	expectEvents(t, service.Events(sourceAccountId), []sequencedEvent{
+	expectEvents(t, service.Events(sourceAccountId), []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
