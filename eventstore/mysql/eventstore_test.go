@@ -6,7 +6,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/rieske/event-sourced-account-go/eventstore"
+	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"log"
 	"os"
@@ -24,7 +25,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer eventstore.CloseResource(db)
+	defer CloseResource(db)
 	database = db
 	waitForMysqlContainerToStart()
 
@@ -84,9 +85,10 @@ func waitForMysqlContainerToStart() {
 	}
 }
 
-func TestSqlStore_Events(t *testing.T) {
-	eventstore.NewSqlStore(database)
-	//sqlStore := eventstore.NewSqlStore(database)
+func TestSqlStore_Events_Empty(t *testing.T) {
+	sqlStore := NewSqlStore(database)
 
-	//sqlStore.Events(account.NewAccountId(), 0)
+	events := sqlStore.Events(account.NewAccountId(), 0)
+
+	assert.Empty(t, events)
 }
