@@ -39,16 +39,16 @@ func (es *inmemoryEeventstore) Events(id account.Id, version int) []SequencedEve
 
 func (es *inmemoryEeventstore) LoadSnapshot(id account.Id) SequencedEvent {
 	es.mutex.RLock()
-	snapshot := es.snapshots[id]
-	es.mutex.RUnlock()
-	return snapshot
+	defer es.mutex.RUnlock()
+
+	return es.snapshots[id]
 }
 
 func (es *inmemoryEeventstore) TransactionExists(id account.Id, txId uuid.UUID) bool {
 	es.mutex.RLock()
-	transactions := es.transactions[id]
-	es.mutex.RUnlock()
-	return es.transactionExists(transactions, txId)
+	defer es.mutex.RUnlock()
+
+	return es.transactionExists(es.transactions[id], txId)
 }
 
 // the mutex here simulates what a persistence engine of choice should do - ensure consistency
@@ -57,9 +57,10 @@ func (es *inmemoryEeventstore) TransactionExists(id account.Id, txId uuid.UUID) 
 // Event writes have to happen in a transaction - either all get written or none
 func (es *inmemoryEeventstore) Append(events []SequencedEvent, snapshots map[account.Id]SequencedEvent, txId uuid.UUID) error {
 	es.mutex.Lock()
+	defer es.mutex.Unlock()
+
 	err := es.validateConsistency(events, txId)
 	if err != nil {
-		es.mutex.Unlock()
 		return err
 	}
 
@@ -70,7 +71,6 @@ func (es *inmemoryEeventstore) Append(events []SequencedEvent, snapshots map[acc
 	for id, snapshot := range snapshots {
 		es.snapshots[id] = snapshot
 	}
-	es.mutex.Unlock()
 	return nil
 }
 
