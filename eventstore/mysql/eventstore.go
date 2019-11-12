@@ -34,12 +34,31 @@ func NewSqlStore(db *sql.DB) *sqlStore {
 }
 
 func (es *sqlStore) Events(id account.Id, version int) []eventstore.SequencedEvent {
-	stmt, err := es.db.Prepare("SELECT sequenceNumber, transactionId, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
+	//stmt, err := es.db.Prepare("SELECT sequenceNumber, transactionId, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
+	stmt, err := es.db.Prepare("SELECT sequenceNumber FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
 	if err != nil {
 		log.Panic(err)
 	}
 	defer CloseResource(stmt)
-	return nil
+	rows, err := stmt.Query(toByteArray(id), version)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer CloseResource(rows)
+
+	var events []eventstore.SequencedEvent
+	for rows.Next() {
+		event := eventstore.SequencedEvent{AggregateId: id}
+		err := rows.Scan(&event.Seq)
+		if err != nil {
+			log.Panic(err)
+		}
+		events = append(events, event)
+	}
+	if err = rows.Err(); err != nil {
+		log.Panic(err)
+	}
+	return events
 }
 
 func (es *sqlStore) LoadSnapshot(id account.Id) eventstore.SequencedEvent {
@@ -51,12 +70,42 @@ func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) bool {
 }
 
 func (es *sqlStore) Append(events []eventstore.SequencedEvent, snapshots map[account.Id]eventstore.SequencedEvent, txId uuid.UUID) error {
+	tx, err := es.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := es.db.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, payload) VALUES(?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer CloseResource(stmt)
+
+	event := events[0]
+	_, err = stmt.Exec(toByteArray(event.AggregateId), event.Seq, toByteArray(txId), "aaa")
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func CloseResource(c io.Closer) {
 	err := c.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
+}
+
+func toByteArray(id [16]byte) []byte {
+	foo := make([]byte, 16)
+	for i, j := range id {
+		foo[i] = j
+	}
+	return foo
 }

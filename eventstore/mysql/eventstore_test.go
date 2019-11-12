@@ -6,7 +6,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"log"
@@ -16,6 +18,7 @@ import (
 )
 
 var database *sql.DB
+var store *sqlStore
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -28,6 +31,7 @@ func TestMain(m *testing.M) {
 	defer CloseResource(db)
 	database = db
 	waitForMysqlContainerToStart()
+	store = NewSqlStore(database)
 
 	code := m.Run()
 
@@ -86,9 +90,22 @@ func waitForMysqlContainerToStart() {
 }
 
 func TestSqlStore_Events_Empty(t *testing.T) {
-	sqlStore := NewSqlStore(database)
-
-	events := sqlStore.Events(account.NewAccountId(), 0)
+	events := store.Events(account.NewAccountId(), 0)
 
 	assert.Empty(t, events)
+}
+
+func TestSqlStore_Events_SingleEvent(t *testing.T) {
+
+	id := account.NewAccountId()
+	err := store.Append([]eventstore.SequencedEvent{{
+		AggregateId: id,
+		Seq:         1,
+		Event:       nil,
+	}}, nil, uuid.New())
+	assert.NoError(t, err)
+
+	events := store.Events(id, 0)
+
+	assert.NotEmpty(t, events)
 }
