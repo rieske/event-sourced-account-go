@@ -40,7 +40,7 @@ func (es *sqlStore) Events(id account.Id, version int) []eventstore.SequencedEve
 		log.Panic(err)
 	}
 	defer CloseResource(stmt)
-	rows, err := stmt.Query(toByteArray(id), version)
+	rows, err := stmt.Query(id[:], version)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -82,7 +82,7 @@ func (es *sqlStore) Append(events []eventstore.SequencedEvent, snapshots map[acc
 	defer CloseResource(stmt)
 
 	event := events[0]
-	_, err = stmt.Exec(toByteArray(event.AggregateId), event.Seq, toByteArray(txId), "aaa")
+	_, err = stmt.Exec(event.AggregateId[:], event.Seq, txId[:], "aaa")
 	if err != nil {
 		return err
 	}
@@ -100,12 +100,4 @@ func CloseResource(c io.Closer) {
 	if err != nil {
 		log.Panic(err)
 	}
-}
-
-func toByteArray(id [16]byte) []byte {
-	foo := make([]byte, 16)
-	for i, j := range id {
-		foo[i] = j
-	}
-	return foo
 }
