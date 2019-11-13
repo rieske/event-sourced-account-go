@@ -40,7 +40,7 @@ func (es *sqlStore) Events(id account.Id, version int) []eventstore.SequencedEve
 		log.Panic(err)
 	}
 	defer CloseResource(stmt)
-	rows, err := stmt.Query(id[:], version)
+	rows, err := stmt.Query(id.UUID[:], version)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -74,25 +74,22 @@ func (es *sqlStore) Append(events []eventstore.SequencedEvent, snapshots map[acc
 	if err != nil {
 		return err
 	}
-
-	stmt, err := es.db.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, payload) VALUES(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, payload) VALUES(?, ?, ?, ?)")
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	defer CloseResource(stmt)
 
-	event := events[0]
-	_, err = stmt.Exec(event.AggregateId[:], event.Seq, txId[:], "aaa")
-	if err != nil {
-		return err
+	for _, event := range events {
+		_, err = stmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], "aaa")
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 func CloseResource(c io.Closer) {

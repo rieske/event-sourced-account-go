@@ -5,8 +5,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type Id uuid.UUID
-type OwnerId uuid.UUID
+type Id struct {
+	uuid.UUID
+}
+type OwnerId struct {
+	uuid.UUID
+}
 
 type EventAppender interface {
 	Append(e Event, a *Account, id Id)
@@ -21,11 +25,11 @@ type Account struct {
 }
 
 func NewAccountId() Id {
-	return Id(uuid.New())
+	return Id{uuid.New()}
 }
 
 func NewOwnerId() OwnerId {
-	return OwnerId(uuid.New())
+	return OwnerId{uuid.New()}
 }
 
 func NewAccount(es EventAppender) *Account {

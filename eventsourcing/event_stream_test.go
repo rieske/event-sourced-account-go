@@ -13,8 +13,8 @@ type esTestFixture struct {
 	store eventStore
 }
 
-func newInMemoryFixture(t *testing.T) esTestFixture {
-	return esTestFixture{t, eventstore.NewInMemoryStore()}
+func newInMemoryFixture(t *testing.T) *esTestFixture {
+	return &esTestFixture{t, eventstore.NewInMemoryStore()}
 }
 
 func (f *esTestFixture) givenEvents(events []eventstore.SequencedEvent) {
