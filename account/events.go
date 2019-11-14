@@ -2,7 +2,6 @@ package account
 
 type Event interface {
 	Apply(account *Account)
-	//Serialize() []byte
 }
 
 type AccountOpenedEvent struct {
@@ -38,7 +37,3 @@ type AccountClosedEvent struct {
 func (e AccountClosedEvent) Apply(account *Account) {
 	account.applyAccountClosed(e)
 }
-
-/*func (e AccountOpenedEvent) Serialize() []byte {
-	return e.OwnerId
-}*/
