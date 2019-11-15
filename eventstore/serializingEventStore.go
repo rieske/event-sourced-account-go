@@ -30,18 +30,17 @@ type serializingEventStore struct {
 	serializer eventSerializer
 }
 
-func (s serializingEventStore) Events(id account.Id, version int) []SequencedEvent {
+func (s serializingEventStore) Events(id account.Id, version int) ([]SequencedEvent, error) {
 	serializedEvents := s.store.Events(id, version)
 	var events []SequencedEvent
 	for _, serializedEvent := range serializedEvents {
 		event, err := s.serializer.DeserializeEvent(serializedEvent)
 		if err != nil {
-			//return err
-			panic(err)
+			return nil, err
 		}
 		events = append(events, *event)
 	}
-	return events
+	return events, nil
 }
 
 func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[account.Id]SequencedEvent, txId uuid.UUID) error {
@@ -66,14 +65,13 @@ func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[acc
 	return s.store.Append(serializedEvents, serializedSnapshots)
 }
 
-func (s serializingEventStore) LoadSnapshot(id account.Id) SequencedEvent {
+func (s serializingEventStore) LoadSnapshot(id account.Id) (*SequencedEvent, error) {
 	serializedSnapshot := s.store.LoadSnapshot(id)
 	snapshot, err := s.serializer.DeserializeEvent(serializedSnapshot)
 	if err != nil {
-		//return err
-		panic(err)
+		return nil, err
 	}
-	return *snapshot
+	return snapshot, nil
 }
 
 func (s serializingEventStore) TransactionExists(id account.Id, txId uuid.UUID) bool {

@@ -32,7 +32,10 @@ func (r repository) query(id account.Id) (*account.Snapshot, error) {
 }
 
 func (r repository) create(id account.Id, tx transaction) error {
-	a := r.newAggregate(id)
+	a, err := r.newAggregate(id)
+	if err != nil {
+		return err
+	}
 	return a.transact(tx, uuid.New())
 }
 
@@ -66,20 +69,27 @@ func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx
 	return es.commit(txId)
 }
 
-func (r repository) aggregateExists(id account.Id) bool {
-	events := r.store.Events(id, 0)
-	return len(events) != 0
+func (r repository) aggregateExists(id account.Id) (bool, error) {
+	events, err := r.store.Events(id, 0)
+	if err != nil {
+		return false, err
+	}
+	return len(events) != 0, nil
 }
 
-func (r repository) newAggregate(id account.Id) aggregate {
+func (r repository) newAggregate(id account.Id) (*aggregate, error) {
 	a := aggregate{}
-	if r.aggregateExists(id) {
+	aggregateExists, err := r.aggregateExists(id)
+	if err != nil {
+		return nil, err
+	}
+	if aggregateExists {
 		a.err = errors.New("account already exists")
-		return a
+		return &a, nil
 	}
 	a.es = r.newEventStream()
 	a.acc = account.NewAccount(a.es)
-	return a
+	return &a, nil
 }
 
 func (r repository) loadAggregate(id account.Id) *aggregate {

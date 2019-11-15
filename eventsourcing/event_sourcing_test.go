@@ -14,7 +14,9 @@ func newAccountService() accountService {
 	return accountService{*repo}
 }
 
-func expectEvents(t *testing.T, actual, expected []eventstore.SequencedEvent) {
+func expectEvents(t *testing.T, service accountService, id account.Id, expected []eventstore.SequencedEvent) {
+	actual, err := service.Events(id)
+	assert.NoError(t, err)
 	assert.Equal(t, len(expected), len(actual), "Event counts do not match")
 	assert.Equal(t, expected, actual, "events do not match")
 }
@@ -80,7 +82,7 @@ func TestEventSourcing_Deposit(t *testing.T) {
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service.Events(id), []eventstore.SequencedEvent{
+	expectEvents(t, service, id, []eventstore.SequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{42, 42}},
 	})
@@ -106,7 +108,7 @@ func TestEventSourcing_Withdraw(t *testing.T) {
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service.Events(id), []eventstore.SequencedEvent{
+	expectEvents(t, service, id, []eventstore.SequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{10, 10}},
 		{id, 3, account.MoneyWithdrawnEvent{2, 8}},
@@ -135,12 +137,12 @@ func TestTransferMoney(t *testing.T) {
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service.Events(sourceAccountId), []eventstore.SequencedEvent{
+	expectEvents(t, service, sourceAccountId, []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		{sourceAccountId, 3, account.MoneyWithdrawnEvent{2, 8}},
 	})
-	expectEvents(t, service.Events(targetAccountId), []eventstore.SequencedEvent{
+	expectEvents(t, service, targetAccountId, []eventstore.SequencedEvent{
 		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		{targetAccountId, 2, account.MoneyDepositedEvent{2, 2}},
 	})
@@ -167,11 +169,11 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 
 	// then
 	assert.EqualError(t, err, "insufficient balance")
-	expectEvents(t, service.Events(sourceAccountId), []eventstore.SequencedEvent{
+	expectEvents(t, service, sourceAccountId, []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
-	expectEvents(t, service.Events(targetAccountId), []eventstore.SequencedEvent{
+	expectEvents(t, service, targetAccountId, []eventstore.SequencedEvent{
 		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 	})
 }
@@ -197,11 +199,11 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 
 	// then
 	assert.EqualError(t, err, "aggregate not found")
-	expectEvents(t, service.Events(sourceAccountId), []eventstore.SequencedEvent{
+	expectEvents(t, service, sourceAccountId, []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
-	expectEvents(t, service.repo.store.Events(targetAccountId, 0), nil)
+	expectEvents(t, service, targetAccountId, nil)
 }
 
 func TestDepositIdempotency(t *testing.T) {

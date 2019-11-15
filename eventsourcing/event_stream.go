@@ -8,9 +8,9 @@ import (
 )
 
 type eventStore interface {
-	Events(id account.Id, version int) []eventstore.SequencedEvent
+	Events(id account.Id, version int) ([]eventstore.SequencedEvent, error)
 	Append(events []eventstore.SequencedEvent, snapshots map[account.Id]eventstore.SequencedEvent, txId uuid.UUID) error
-	LoadSnapshot(id account.Id) eventstore.SequencedEvent
+	LoadSnapshot(id account.Id) (*eventstore.SequencedEvent, error)
 	TransactionExists(id account.Id, txId uuid.UUID) bool
 }
 
@@ -34,19 +34,28 @@ func newEventStream(es eventStore, snapshotFrequency int) *eventStream {
 	}
 }
 
-func (s *eventStream) applySnapshot(id account.Id) (*account.Account, int) {
+func (s *eventStream) applySnapshot(id account.Id) (*account.Account, int, error) {
 	a := account.NewAccount(s)
-	snapshot := s.eventStore.LoadSnapshot(id)
+	snapshot, err := s.eventStore.LoadSnapshot(id)
+	if err != nil {
+		return nil, 0, err
+	}
 	if snapshot.Event != nil {
 		snapshot.Event.Apply(a)
-		return a, snapshot.Seq
+		return a, snapshot.Seq, nil
 	}
-	return a, 0
+	return a, 0, nil
 }
 
 func (s *eventStream) replay(id account.Id) (*account.Account, error) {
-	a, currentVersion := s.applySnapshot(id)
-	events := s.eventStore.Events(id, currentVersion)
+	a, currentVersion, err := s.applySnapshot(id)
+	if err != nil {
+		return nil, err
+	}
+	events, err := s.eventStore.Events(id, currentVersion)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, e := range events {
 		e.Event.Apply(a)

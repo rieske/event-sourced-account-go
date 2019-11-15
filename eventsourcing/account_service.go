@@ -48,6 +48,6 @@ func (s accountService) QueryAccount(id account.Id) (*account.Snapshot, error) {
 	return s.repo.query(id)
 }
 
-func (s accountService) Events(id account.Id) []eventstore.SequencedEvent {
+func (s accountService) Events(id account.Id) ([]eventstore.SequencedEvent, error) {
 	return s.repo.store.Events(id, 0)
 }

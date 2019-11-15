@@ -42,7 +42,8 @@ func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *even
 }
 
 func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.Id, event account.Event) {
-	aggregateEvents := f.store.Events(aggregateId, 0)
+	aggregateEvents, err := f.store.Events(aggregateId, 0)
+	assert.NoError(f.t, err)
 	seqEvent := aggregateEvents[index]
 
 	assert.Equal(f.t, event, seqEvent.Event)
@@ -51,8 +52,9 @@ func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId acc
 }
 
 func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId account.Id, event account.Snapshot) {
-	snapshot := f.store.LoadSnapshot(aggregateId)
+	snapshot, err := f.store.LoadSnapshot(aggregateId)
 
+	assert.NoError(f.t, err)
 	assert.Equal(f.t, event, snapshot.Event)
 	assert.Equal(f.t, aggregateId, snapshot.AggregateId)
 	assert.Equal(f.t, seq, snapshot.Seq)
@@ -215,7 +217,9 @@ func TestCommitInSequence(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(es.uncommittedEvents))
-	assert.Equal(t, 2, len(fixture.store.Events(id, 0)))
+	events, err := fixture.store.Events(id, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(events))
 
 	fixture.assertPersistedEvent(0, 1, id, accountOpenedEvent)
 	fixture.assertPersistedEvent(1, 2, id, depositEvent)

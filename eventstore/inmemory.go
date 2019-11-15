@@ -21,21 +21,22 @@ func NewInMemoryStore() *inmemoryStore {
 	}
 }
 
-func (es *inmemoryStore) Events(id account.Id, version int) []SequencedEvent {
+func (es *inmemoryStore) Events(id account.Id, version int) ([]SequencedEvent, error) {
 	var events []SequencedEvent
 	for _, e := range es.events {
 		if e.AggregateId == id && e.Seq > version {
 			events = append(events, e)
 		}
 	}
-	return events
+	return events, nil
 }
 
-func (es *inmemoryStore) LoadSnapshot(id account.Id) SequencedEvent {
+func (es *inmemoryStore) LoadSnapshot(id account.Id) (*SequencedEvent, error) {
 	es.mutex.RLock()
 	defer es.mutex.RUnlock()
 
-	return es.snapshots[id]
+	snapshot := es.snapshots[id]
+	return &snapshot, nil
 }
 
 func (es *inmemoryStore) TransactionExists(id account.Id, txId uuid.UUID) bool {
