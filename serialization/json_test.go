@@ -12,7 +12,7 @@ var serializer = jsonEventSerializer{}
 
 type jsonTestFixture struct {
 	event           eventstore.SequencedEvent
-	serializedEvent *eventstore.SerializedEvent
+	serializedEvent eventstore.SerializedEvent
 }
 
 func newSnapshotJsonTestFixture(t *testing.T) jsonTestFixture {
@@ -32,7 +32,7 @@ func newSnapshotJsonTestFixture(t *testing.T) jsonTestFixture {
 				Open:    true,
 			},
 		},
-		serializedEvent: &eventstore.SerializedEvent{
+		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"Id":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","OwnerId":"c2b0bbce-679a-4af5-9a75-8958da9eb02c","Balance":20,"Open":true}`),
@@ -56,7 +56,7 @@ func newAccountOpenedJsonTestFixture(t *testing.T) jsonTestFixture {
 				OwnerId:   account.OwnerId{ownerId},
 			},
 		},
-		serializedEvent: &eventstore.SerializedEvent{
+		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"AccountId":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","OwnerId":"c2b0bbce-679a-4af5-9a75-8958da9eb02c"}`),
@@ -78,7 +78,7 @@ func newMoneyDepositedJsonTestFixture(t *testing.T) jsonTestFixture {
 				Balance:         10,
 			},
 		},
-		serializedEvent: &eventstore.SerializedEvent{
+		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"AmountDeposited":5,"Balance":10}`),
@@ -100,7 +100,7 @@ func newMoneyWithdrawnJsonTestFixture(t *testing.T) jsonTestFixture {
 				Balance:         10,
 			},
 		},
-		serializedEvent: &eventstore.SerializedEvent{
+		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"AmountWithdrawn":5,"Balance":10}`),
@@ -119,7 +119,7 @@ func newAccountClosedJsonTestFixture(t *testing.T) jsonTestFixture {
 			Seq:         42,
 			Event:       account.AccountClosedEvent{},
 		},
-		serializedEvent: &eventstore.SerializedEvent{
+		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{}`),
@@ -143,7 +143,7 @@ func TestJsonDeserializeSnapshot(t *testing.T) {
 	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
-	assert.Equal(t, fixture.event, *event)
+	assert.Equal(t, fixture.event, event)
 }
 
 func TestJsonSerializeAccountOpened(t *testing.T) {
@@ -161,7 +161,7 @@ func TestJsonDeserializeAccountOpened(t *testing.T) {
 	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
-	assert.Equal(t, fixture.event, *event)
+	assert.Equal(t, fixture.event, event)
 }
 
 func TestJsonSerializeMoneyDeposited(t *testing.T) {
@@ -179,7 +179,7 @@ func TestJsonDeserializeMoneyDeposited(t *testing.T) {
 	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
-	assert.Equal(t, fixture.event, *event)
+	assert.Equal(t, fixture.event, event)
 }
 
 func TestJsonSerializeMoneyWithdrawn(t *testing.T) {
@@ -197,7 +197,7 @@ func TestJsonDeserializeMoneyWithdrawn(t *testing.T) {
 	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
-	assert.Equal(t, fixture.event, *event)
+	assert.Equal(t, fixture.event, event)
 }
 
 func TestJsonSerializeAccountClosed(t *testing.T) {
@@ -215,5 +215,5 @@ func TestJsonDeserializeAccountClosed(t *testing.T) {
 	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
-	assert.Equal(t, fixture.event, *event)
+	assert.Equal(t, fixture.event, event)
 }

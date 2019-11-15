@@ -33,9 +33,8 @@ func NewSqlStore(db *sql.DB) *sqlStore {
 	return &sqlStore{db: db}
 }
 
-func (es *sqlStore) Events(id account.Id, version int) ([]*eventstore.SerializedEvent, error) {
-	//stmt, err := es.db.Prepare("SELECT sequenceNumber, transactionId, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
-	stmt, err := es.db.Prepare("SELECT sequenceNumber FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
+func (es *sqlStore) Events(id account.Id, version int) ([]eventstore.SerializedEvent, error) {
+	stmt, err := es.db.Prepare("SELECT sequenceNumber, eventType, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -46,14 +45,14 @@ func (es *sqlStore) Events(id account.Id, version int) ([]*eventstore.Serialized
 	}
 	defer CloseResource(rows)
 
-	var events []*eventstore.SerializedEvent
+	var events []eventstore.SerializedEvent
 	for rows.Next() {
 		event := eventstore.SerializedEvent{AggregateId: id}
-		err := rows.Scan(&event.Seq)
+		err := rows.Scan(&event.Seq, &event.EventType, &event.Payload)
 		if err != nil {
 			return nil, err
 		}
-		events = append(events, &event)
+		events = append(events, event)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -69,12 +68,12 @@ func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, erro
 	return false, nil
 }
 
-func (es *sqlStore) Append(events []*eventstore.SerializedEvent, snapshots map[account.Id]*eventstore.SerializedEvent, txId uuid.UUID) error {
+func (es *sqlStore) Append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
 	tx, err := es.db.Begin()
 	if err != nil {
 		return err
 	}
-	stmt, err := tx.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, payload) VALUES(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, eventType, payload) VALUES(?, ?, ?, ?, ?)")
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -82,7 +81,7 @@ func (es *sqlStore) Append(events []*eventstore.SerializedEvent, snapshots map[a
 	defer CloseResource(stmt)
 
 	for _, event := range events {
-		_, err = stmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], "aaa")
+		_, err = stmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload)
 		if err != nil {
 			tx.Rollback()
 			return err
