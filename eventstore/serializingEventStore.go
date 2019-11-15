@@ -10,7 +10,6 @@ type SerializedEvent struct {
 	Seq         int
 	Payload     []byte
 	EventType   int
-	txId        uuid.UUID
 }
 
 type eventSerializer interface {
@@ -19,10 +18,10 @@ type eventSerializer interface {
 }
 
 type eventStore interface {
-	Events(id account.Id, version int) []*SerializedEvent
-	Append(events []*SerializedEvent, snapshots map[account.Id]*SerializedEvent) error
-	LoadSnapshot(id account.Id) *SerializedEvent
-	TransactionExists(id account.Id, txId uuid.UUID) bool
+	Events(id account.Id, version int) ([]*SerializedEvent, error)
+	Append(events []*SerializedEvent, snapshots map[account.Id]*SerializedEvent, txId uuid.UUID) error
+	LoadSnapshot(id account.Id) (*SerializedEvent, error)
+	TransactionExists(id account.Id, txId uuid.UUID) (bool, error)
 }
 
 type serializingEventStore struct {
@@ -31,7 +30,10 @@ type serializingEventStore struct {
 }
 
 func (s serializingEventStore) Events(id account.Id, version int) ([]SequencedEvent, error) {
-	serializedEvents := s.store.Events(id, version)
+	serializedEvents, err := s.store.Events(id, version)
+	if err != nil {
+		return nil, err
+	}
 	var events []SequencedEvent
 	for _, serializedEvent := range serializedEvents {
 		event, err := s.serializer.DeserializeEvent(serializedEvent)
@@ -50,7 +52,6 @@ func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[acc
 		if err != nil {
 			return err
 		}
-		serializedEvent.txId = txId
 		serializedEvents = append(serializedEvents, serializedEvent)
 	}
 	serializedSnapshots := map[account.Id]*SerializedEvent{}
@@ -59,14 +60,16 @@ func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[acc
 		if err != nil {
 			return err
 		}
-		serializedSnapshot.txId = txId
 		serializedSnapshots[id] = serializedSnapshot
 	}
-	return s.store.Append(serializedEvents, serializedSnapshots)
+	return s.store.Append(serializedEvents, serializedSnapshots, txId)
 }
 
 func (s serializingEventStore) LoadSnapshot(id account.Id) (*SequencedEvent, error) {
-	serializedSnapshot := s.store.LoadSnapshot(id)
+	serializedSnapshot, err := s.store.LoadSnapshot(id)
+	if err != nil {
+		return nil, err
+	}
 	snapshot, err := s.serializer.DeserializeEvent(serializedSnapshot)
 	if err != nil {
 		return nil, err
@@ -74,6 +77,6 @@ func (s serializingEventStore) LoadSnapshot(id account.Id) (*SequencedEvent, err
 	return snapshot, nil
 }
 
-func (s serializingEventStore) TransactionExists(id account.Id, txId uuid.UUID) bool {
+func (s serializingEventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
 	return s.store.TransactionExists(id, txId)
 }

@@ -90,22 +90,25 @@ func waitForMysqlContainerToStart() {
 }
 
 func TestSqlStore_Events_Empty(t *testing.T) {
-	events := store.Events(account.NewAccountId(), 0)
+	events, err := store.Events(account.NewAccountId(), 0)
 
+	assert.NoError(t, err)
 	assert.Empty(t, events)
 }
 
 func TestSqlStore_Events_SingleEvent(t *testing.T) {
 
 	id := account.NewAccountId()
-	err := store.Append([]eventstore.SequencedEvent{{
+	err := store.Append([]*eventstore.SerializedEvent{{
 		AggregateId: id,
 		Seq:         1,
-		Event:       nil,
+		Payload:     []byte("test"),
+		EventType:   1,
 	}}, nil, uuid.New())
 	assert.NoError(t, err)
 
-	events := store.Events(id, 0)
+	events, err := store.Events(id, 0)
 
+	assert.NoError(t, err)
 	assert.NotEmpty(t, events)
 }

@@ -33,43 +33,43 @@ func NewSqlStore(db *sql.DB) *sqlStore {
 	return &sqlStore{db: db}
 }
 
-func (es *sqlStore) Events(id account.Id, version int) []eventstore.SequencedEvent {
+func (es *sqlStore) Events(id account.Id, version int) ([]*eventstore.SerializedEvent, error) {
 	//stmt, err := es.db.Prepare("SELECT sequenceNumber, transactionId, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
 	stmt, err := es.db.Prepare("SELECT sequenceNumber FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 	defer CloseResource(stmt)
 	rows, err := stmt.Query(id.UUID[:], version)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 	defer CloseResource(rows)
 
-	var events []eventstore.SequencedEvent
+	var events []*eventstore.SerializedEvent
 	for rows.Next() {
-		event := eventstore.SequencedEvent{AggregateId: id}
+		event := eventstore.SerializedEvent{AggregateId: id}
 		err := rows.Scan(&event.Seq)
 		if err != nil {
-			log.Panic(err)
+			return nil, err
 		}
-		events = append(events, event)
+		events = append(events, &event)
 	}
 	if err = rows.Err(); err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	return events
+	return events, nil
 }
 
-func (es *sqlStore) LoadSnapshot(id account.Id) eventstore.SequencedEvent {
-	return eventstore.SequencedEvent{}
+func (es *sqlStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, error) {
+	return &eventstore.SerializedEvent{}, nil
 }
 
-func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) bool {
-	return false
+func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
+	return false, nil
 }
 
-func (es *sqlStore) Append(events []eventstore.SequencedEvent, snapshots map[account.Id]eventstore.SequencedEvent, txId uuid.UUID) error {
+func (es *sqlStore) Append(events []*eventstore.SerializedEvent, snapshots map[account.Id]*eventstore.SerializedEvent, txId uuid.UUID) error {
 	tx, err := es.db.Begin()
 	if err != nil {
 		return err

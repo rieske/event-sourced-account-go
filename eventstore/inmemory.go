@@ -39,7 +39,7 @@ func (es *inmemoryStore) LoadSnapshot(id account.Id) (*SequencedEvent, error) {
 	return &snapshot, nil
 }
 
-func (es *inmemoryStore) TransactionExists(id account.Id, txId uuid.UUID) bool {
+func (es *inmemoryStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
 	es.mutex.RLock()
 	defer es.mutex.RUnlock()
 
@@ -77,7 +77,11 @@ func (es *inmemoryStore) validateConsistency(events []SequencedEvent, txId uuid.
 		if currentVersion == 0 {
 			currentVersion = es.latestVersion(e.AggregateId)
 		}
-		if es.transactionExists(es.transactions[e.AggregateId], txId) {
+		transactionExists, err := es.transactionExists(es.transactions[e.AggregateId], txId)
+		if err != nil {
+			return err
+		}
+		if transactionExists {
 			return errors.New("concurrent modification error")
 		}
 		if e.Seq <= currentVersion {
@@ -98,11 +102,11 @@ func (es *inmemoryStore) latestVersion(id account.Id) int {
 	return latestVersion
 }
 
-func (es *inmemoryStore) transactionExists(transactions []uuid.UUID, txId uuid.UUID) bool {
+func (es *inmemoryStore) transactionExists(transactions []uuid.UUID, txId uuid.UUID) (bool, error) {
 	for _, tx := range transactions {
 		if tx == txId {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }

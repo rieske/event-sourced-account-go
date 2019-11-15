@@ -41,7 +41,11 @@ func (r repository) create(id account.Id, tx transaction) error {
 
 func (r repository) transact(id account.Id, txId uuid.UUID, tx transaction) error {
 	a := r.loadAggregate(id)
-	if r.store.TransactionExists(id, txId) {
+	transactionExists, err := r.store.TransactionExists(id, txId)
+	if err != nil {
+		return err
+	}
+	if transactionExists {
 		return nil
 	}
 	return a.transact(tx, txId)
@@ -58,7 +62,11 @@ func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx
 		return err
 	}
 
-	if r.store.TransactionExists(sourceId, txId) || r.store.TransactionExists(targetId, txId) {
+	transactionExists, err := r.transactionExists(sourceId, targetId, txId)
+	if err != nil {
+		return err
+	}
+	if transactionExists {
 		return nil
 	}
 	err = tx(source, target)
@@ -67,6 +75,18 @@ func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx
 	}
 
 	return es.commit(txId)
+}
+
+func (r repository) transactionExists(sourceId, targetId account.Id, txId uuid.UUID) (bool, error) {
+	sourceTxExists, err := r.store.TransactionExists(sourceId, txId)
+	if err != nil {
+		return false, err
+	}
+	targetTxExists, err := r.store.TransactionExists(targetId, txId)
+	if err != nil {
+		return false, err
+	}
+	return sourceTxExists || targetTxExists, nil
 }
 
 func (r repository) aggregateExists(id account.Id) (bool, error) {
