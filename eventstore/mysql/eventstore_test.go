@@ -100,9 +100,9 @@ func TestSqlStore_Events_SingleEvent(t *testing.T) {
 	id := account.NewAccountId()
 	expectedEvents := []eventstore.SerializedEvent{{
 		AggregateId: id,
-		Seq:         1,
+		Seq:         11,
 		Payload:     []byte("test"),
-		EventType:   1,
+		EventType:   42,
 	}}
 	err := store.Append(expectedEvents, nil, uuid.New())
 	assert.NoError(t, err)
@@ -125,4 +125,36 @@ func TestSqlStore_NoSnapshot(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Nil(t, event)
+}
+
+func TestSqlStore_InsertTransactionIdForAllAggregatesInEvents(t *testing.T) {
+	sourceAccount := account.NewAccountId()
+	targetAccount := account.NewAccountId()
+	expectedEvents := []eventstore.SerializedEvent{
+		{
+			AggregateId: sourceAccount,
+			Seq:         1,
+			Payload:     []byte("test1"),
+			EventType:   2,
+		},
+		{
+			AggregateId: targetAccount,
+			Seq:         1,
+			Payload:     []byte("test2"),
+			EventType:   2,
+		},
+	}
+	txId := uuid.New()
+	err := store.Append(expectedEvents, nil, txId)
+	assert.NoError(t, err)
+
+	transactionExists, err := store.TransactionExists(sourceAccount, txId)
+	assert.NoError(t, err)
+	assert.True(t, transactionExists)
+	transactionExists, err = store.TransactionExists(targetAccount, txId)
+	assert.NoError(t, err)
+	assert.True(t, transactionExists)
+	transactionExists, err = store.TransactionExists(account.NewAccountId(), txId)
+	assert.NoError(t, err)
+	assert.False(t, transactionExists)
 }

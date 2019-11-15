@@ -65,29 +65,68 @@ func (es *sqlStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, er
 }
 
 func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
-	return false, nil
+	stmt, err := es.db.Prepare("SELECT aggregateId FROM event_store.Transaction WHERE aggregateId = ? AND transactionId = ?")
+	if err != nil {
+		return false, err
+	}
+	defer CloseResource(stmt)
+	rows, err := stmt.Query(id.UUID[:], txId[:])
+	if err != nil {
+		return false, err
+	}
+	defer CloseResource(rows)
+	transactionExists := rows.Next()
+	if err = rows.Err(); err != nil {
+		return transactionExists, err
+	}
+
+	return transactionExists, nil
 }
 
 func (es *sqlStore) Append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
+	aggregateIds := map[account.Id]bool{}
+	for _, event := range events {
+		aggregateIds[event.AggregateId] = true
+	}
+
 	tx, err := es.db.Begin()
 	if err != nil {
 		return err
 	}
-	stmt, err := tx.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, eventType, payload) VALUES(?, ?, ?, ?, ?)")
+
+	insertTransactionsStmt, err := tx.Prepare("INSERT INTO event_store.Transaction(aggregateId, transactionId) VALUES(?, ?)")
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	defer CloseResource(stmt)
+	defer CloseResource(insertTransactionsStmt)
 
-	for _, event := range events {
-		_, err = stmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload)
+	for aggregateId, _ := range aggregateIds {
+		_, err = insertTransactionsStmt.Exec(aggregateId.UUID[:], txId[:])
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
 
+	insertEventsStmt, err := tx.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, eventType, payload) VALUES(?, ?, ?, ?, ?)")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer CloseResource(insertEventsStmt)
+
+	for _, event := range events {
+		_, err = insertEventsStmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	return tx.Commit()
 }
 
