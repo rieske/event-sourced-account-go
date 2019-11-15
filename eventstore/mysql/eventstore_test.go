@@ -158,3 +158,21 @@ func TestSqlStore_InsertTransactionIdForAllAggregatesInEvents(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, transactionExists)
 }
+
+func TestSqlStore_Snapshot(t *testing.T) {
+	id := account.NewAccountId()
+	expectedSnapshot := eventstore.SerializedEvent{
+		AggregateId: id,
+		Seq:         11,
+		Payload:     []byte("test"),
+		EventType:   42,
+	}
+	err := store.Append([]eventstore.SerializedEvent{}, map[account.Id]eventstore.SerializedEvent{id: expectedSnapshot}, uuid.New())
+	assert.NoError(t, err)
+
+	snapshot, err := store.LoadSnapshot(id)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, snapshot)
+	assert.Equal(t, expectedSnapshot, *snapshot)
+}

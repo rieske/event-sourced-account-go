@@ -61,7 +61,30 @@ func (es *sqlStore) Events(id account.Id, version int) ([]eventstore.SerializedE
 }
 
 func (es *sqlStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, error) {
-	return nil, nil
+	stmt, err := es.db.Prepare("SELECT sequenceNumber, eventType, payload FROM event_store.Snapshot WHERE aggregateId = ?")
+	if err != nil {
+		return nil, err
+	}
+	defer CloseResource(stmt)
+	rows, err := stmt.Query(id.UUID[:])
+	if err != nil {
+		return nil, err
+	}
+	defer CloseResource(rows)
+
+	var snapshot *eventstore.SerializedEvent
+	if rows.Next() {
+		event := eventstore.SerializedEvent{AggregateId: id}
+		err := rows.Scan(&event.Seq, &event.EventType, &event.Payload)
+		if err != nil {
+			return nil, err
+		}
+		snapshot = &event
+	}
+	if err = rows.Err(); err != nil {
+		return snapshot, err
+	}
+	return snapshot, nil
 }
 
 func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
@@ -102,7 +125,7 @@ func (es *sqlStore) Append(events []eventstore.SerializedEvent, snapshots map[ac
 	defer CloseResource(insertTransactionsStmt)
 
 	for aggregateId, _ := range aggregateIds {
-		_, err = insertTransactionsStmt.Exec(aggregateId.UUID[:], txId[:])
+		_, err := insertTransactionsStmt.Exec(aggregateId.UUID[:], txId[:])
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -117,16 +140,38 @@ func (es *sqlStore) Append(events []eventstore.SerializedEvent, snapshots map[ac
 	defer CloseResource(insertEventsStmt)
 
 	for _, event := range events {
-		_, err = insertEventsStmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload)
+		_, err := insertEventsStmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
+
+	deleteSnapshotsStmt, err := tx.Prepare("DELETE FROM event_store.Snapshot WHERE aggregateId = ?")
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
+	defer CloseResource(deleteSnapshotsStmt)
+	insertSnapshotsStmt, err := tx.Prepare("INSERT INTO event_store.Snapshot(aggregateId, sequenceNumber, eventType, payload) VALUES(?, ?, ?, ?)")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer CloseResource(insertSnapshotsStmt)
+	for aggregateId, snapshot := range snapshots {
+		_, err := deleteSnapshotsStmt.Exec(aggregateId.UUID[:])
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		_, err = insertSnapshotsStmt.Exec(snapshot.AggregateId.UUID[:], snapshot.Seq, snapshot.EventType, snapshot.Payload)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
 	return tx.Commit()
 }
 
