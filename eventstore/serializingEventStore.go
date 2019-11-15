@@ -65,16 +65,19 @@ func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[acc
 	return s.store.Append(serializedEvents, serializedSnapshots, txId)
 }
 
-func (s serializingEventStore) LoadSnapshot(id account.Id) (*SequencedEvent, error) {
+func (s serializingEventStore) LoadSnapshot(id account.Id) (SequencedEvent, error) {
 	serializedSnapshot, err := s.store.LoadSnapshot(id)
 	if err != nil {
-		return nil, err
+		return SequencedEvent{}, err
+	}
+	if serializedSnapshot == nil {
+		return SequencedEvent{}, nil
 	}
 	snapshot, err := s.serializer.DeserializeEvent(serializedSnapshot)
 	if err != nil {
-		return nil, err
+		return SequencedEvent{}, err
 	}
-	return snapshot, nil
+	return *snapshot, nil
 }
 
 func (s serializingEventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {

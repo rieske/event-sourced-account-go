@@ -31,12 +31,11 @@ func (es *inmemoryStore) Events(id account.Id, version int) ([]SequencedEvent, e
 	return events, nil
 }
 
-func (es *inmemoryStore) LoadSnapshot(id account.Id) (*SequencedEvent, error) {
+func (es *inmemoryStore) LoadSnapshot(id account.Id) (SequencedEvent, error) {
 	es.mutex.RLock()
 	defer es.mutex.RUnlock()
 
-	snapshot := es.snapshots[id]
-	return &snapshot, nil
+	return es.snapshots[id], nil
 }
 
 func (es *inmemoryStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {

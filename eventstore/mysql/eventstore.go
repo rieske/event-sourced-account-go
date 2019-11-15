@@ -62,7 +62,7 @@ func (es *sqlStore) Events(id account.Id, version int) ([]*eventstore.Serialized
 }
 
 func (es *sqlStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, error) {
-	return &eventstore.SerializedEvent{}, nil
+	return nil, nil
 }
 
 func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
@@ -95,6 +95,6 @@ func (es *sqlStore) Append(events []*eventstore.SerializedEvent, snapshots map[a
 func CloseResource(c io.Closer) {
 	err := c.Close()
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
 	}
 }

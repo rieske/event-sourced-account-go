@@ -97,7 +97,6 @@ func TestSqlStore_Events_Empty(t *testing.T) {
 }
 
 func TestSqlStore_Events_SingleEvent(t *testing.T) {
-
 	id := account.NewAccountId()
 	err := store.Append([]*eventstore.SerializedEvent{{
 		AggregateId: id,
@@ -111,4 +110,18 @@ func TestSqlStore_Events_SingleEvent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, events)
+}
+
+func TestSqlStore_NoTransactionExists(t *testing.T) {
+	transactionExists, err := store.TransactionExists(account.NewAccountId(), uuid.New())
+
+	assert.NoError(t, err)
+	assert.False(t, transactionExists)
+}
+
+func TestSqlStore_NoSnapshot(t *testing.T) {
+	event, err := store.LoadSnapshot(account.NewAccountId())
+
+	assert.NoError(t, err)
+	assert.Nil(t, event)
 }

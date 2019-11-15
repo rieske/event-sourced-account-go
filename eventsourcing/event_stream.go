@@ -10,7 +10,7 @@ import (
 type eventStore interface {
 	Events(id account.Id, version int) ([]eventstore.SequencedEvent, error)
 	Append(events []eventstore.SequencedEvent, snapshots map[account.Id]eventstore.SequencedEvent, txId uuid.UUID) error
-	LoadSnapshot(id account.Id) (*eventstore.SequencedEvent, error)
+	LoadSnapshot(id account.Id) (eventstore.SequencedEvent, error)
 	TransactionExists(id account.Id, txId uuid.UUID) (bool, error)
 }
 
