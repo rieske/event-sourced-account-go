@@ -29,6 +29,18 @@ func TestConsistencyInMemory(t *testing.T) {
 	suite.Run(t, &testSuite)
 }
 
+func TestConsistencyInMemoryWithSnapshotting(t *testing.T) {
+	store := eventstore.NewInMemoryStore()
+	testSuite := ConsistencyTestSuite{
+		Suite:           suite.Suite{},
+		accountService:  eventsourcing.NewAccountService(store, 5),
+		operationCount:  100,
+		concurrentUsers: 8,
+	}
+
+	suite.Run(t, &testSuite)
+}
+
 /*func TestConsistencyInMemoryDb(t *testing.T) {
 	testSuite := ConsistencyTestSuite{
 		Suite:           suite.Suite{},
@@ -88,7 +100,7 @@ func (suite *ConsistencyTestSuite) withRetryOnConcurrentModification(wg *sync.Wa
 	wg.Done()
 }
 
-func (suite *ConsistencyTestSuite) testConcurrentDeposits(snapshottingFrequency int) {
+func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
 	err := suite.accountService.OpenAccount(id, ownerId)
 	suite.NoError(err)
@@ -102,7 +114,7 @@ func (suite *ConsistencyTestSuite) testConcurrentDeposits(snapshottingFrequency 
 	suite.Equal(int64(suite.operationCount*suite.concurrentUsers), snapshot.Balance)
 }
 
-func (suite *ConsistencyTestSuite) testConcurrentTransfers(snapshottingFrequency int) {
+func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 	// given
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
@@ -131,7 +143,7 @@ func (suite *ConsistencyTestSuite) testConcurrentTransfers(snapshottingFrequency
 	suite.Equal(int64(suite.operationCount*suite.concurrentUsers+suite.operationCount), targetSnapshot.Balance)
 }
 
-func (suite *ConsistencyTestSuite) testConcurrentIdempotentTransfers(snapshottingFrequency int) {
+func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfers() {
 	// given
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
@@ -158,28 +170,4 @@ func (suite *ConsistencyTestSuite) testConcurrentIdempotentTransfers(snapshottin
 	targetSnapshot, err := suite.accountService.QueryAccount(targetAccountId)
 	suite.NoError(err)
 	suite.Equal(int64(suite.operationCount*2), targetSnapshot.Balance)
-}
-
-func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
-	suite.testConcurrentDeposits(0)
-}
-
-func (suite *ConsistencyTestSuite) TestConcurrentDepositsWithSnapshotting() {
-	suite.testConcurrentDeposits(5)
-}
-
-func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
-	suite.testConcurrentTransfers(0)
-}
-
-func (suite *ConsistencyTestSuite) TestConcurrentTransfersWithSnapshotting() {
-	suite.testConcurrentTransfers(5)
-}
-
-func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfers() {
-	suite.testConcurrentIdempotentTransfers(0)
-}
-
-func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfersWithSnapshotting() {
-	suite.testConcurrentIdempotentTransfers(5)
 }
