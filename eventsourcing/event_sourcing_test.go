@@ -1,20 +1,28 @@
-package eventsourcing
+package eventsourcing_test
 
 import (
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func newAccountService() accountService {
-	store := eventstore.NewInMemoryStore()
-	repo := NewAccountRepository(store, 0)
-	return accountService{*repo}
+type esTestFixture struct {
+	service *eventsourcing.AccountService
+	store   eventsourcing.EventStore
 }
 
-func expectEvents(t *testing.T, service accountService, id account.Id, expected []eventstore.SequencedEvent) {
+func newEsTestFixture() *esTestFixture {
+	store := eventstore.NewInMemoryStore()
+	return &esTestFixture{
+		service: eventsourcing.NewAccountService(store, 0),
+		store:   store,
+	}
+}
+
+func expectEvents(t *testing.T, service *eventsourcing.AccountService, id account.Id, expected []eventstore.SequencedEvent) {
 	actual, err := service.Events(id)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expected), len(actual), "Event counts do not match")
@@ -22,43 +30,43 @@ func expectEvents(t *testing.T, service accountService, id account.Id, expected 
 }
 
 func TestOpenAccount(t *testing.T) {
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.OpenAccount(id, ownerId)
+	err := f.service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 }
 
 func TestCanNotOpenDuplicateAccount(t *testing.T) {
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.OpenAccount(id, ownerId)
+	err := f.service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
-	err = service.OpenAccount(id, ownerId)
+	err = f.service.OpenAccount(id, ownerId)
 	assert.EqualError(t, err, "account already exists")
 }
 
 func TestCanOpenDistinctAccounts(t *testing.T) {
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.OpenAccount(id, ownerId)
+	err := f.service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
 	id = account.NewAccountId()
-	err = service.OpenAccount(id, ownerId)
+	err = f.service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 }
 
 func TestCanNotDepositWhenNoAccountExists(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	// when
 	id := account.NewAccountId()
-	err := service.Deposit(id, uuid.New(), 42)
+	err := f.service.Deposit(id, uuid.New(), 42)
 
 	// then
 	assert.EqualError(t, err, "aggregate not found")
@@ -66,10 +74,10 @@ func TestCanNotDepositWhenNoAccountExists(t *testing.T) {
 
 func TestEventSourcing_Deposit(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.repo.store.Append(
+	err := f.store.Append(
 		[]eventstore.SequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		},
@@ -78,11 +86,11 @@ func TestEventSourcing_Deposit(t *testing.T) {
 	)
 
 	// when
-	err = service.Deposit(id, uuid.New(), 42)
+	err = f.service.Deposit(id, uuid.New(), 42)
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service, id, []eventstore.SequencedEvent{
+	expectEvents(t, f.service, id, []eventstore.SequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{42, 42}},
 	})
@@ -90,10 +98,10 @@ func TestEventSourcing_Deposit(t *testing.T) {
 
 func TestEventSourcing_Withdraw(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.repo.store.Append(
+	err := f.store.Append(
 		[]eventstore.SequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
 			{id, 2, account.MoneyDepositedEvent{10, 10}},
@@ -104,11 +112,11 @@ func TestEventSourcing_Withdraw(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	err = service.Withdraw(id, uuid.New(), 2)
+	err = f.service.Withdraw(id, uuid.New(), 2)
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service, id, []eventstore.SequencedEvent{
+	expectEvents(t, f.service, id, []eventstore.SequencedEvent{
 		{id, 1, account.AccountOpenedEvent{id, ownerId}},
 		{id, 2, account.MoneyDepositedEvent{10, 10}},
 		{id, 3, account.MoneyWithdrawnEvent{2, 8}},
@@ -117,11 +125,11 @@ func TestEventSourcing_Withdraw(t *testing.T) {
 
 func TestTransferMoney(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.repo.store.Append(
+	err := f.store.Append(
 		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
@@ -133,16 +141,16 @@ func TestTransferMoney(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	err = service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 2)
+	err = f.service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 2)
 
 	// then
 	assert.NoError(t, err)
-	expectEvents(t, service, sourceAccountId, []eventstore.SequencedEvent{
+	expectEvents(t, f.service, sourceAccountId, []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		{sourceAccountId, 3, account.MoneyWithdrawnEvent{2, 8}},
 	})
-	expectEvents(t, service, targetAccountId, []eventstore.SequencedEvent{
+	expectEvents(t, f.service, targetAccountId, []eventstore.SequencedEvent{
 		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 		{targetAccountId, 2, account.MoneyDepositedEvent{2, 2}},
 	})
@@ -150,10 +158,10 @@ func TestTransferMoney(t *testing.T) {
 
 func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.repo.store.Append(
+	err := f.store.Append(
 		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
@@ -165,24 +173,24 @@ func TestTransferMoneyFailsWithInsufficientBalance(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	err = service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 11)
+	err = f.service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 11)
 
 	// then
 	assert.EqualError(t, err, "insufficient balance")
-	expectEvents(t, service, sourceAccountId, []eventstore.SequencedEvent{
+	expectEvents(t, f.service, sourceAccountId, []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
-	expectEvents(t, service, targetAccountId, []eventstore.SequencedEvent{
+	expectEvents(t, f.service, targetAccountId, []eventstore.SequencedEvent{
 		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerId}},
 	})
 }
 
 func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.repo.store.Append(
+	err := f.store.Append(
 		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
@@ -195,86 +203,86 @@ func TestTransferMoneyFailsWithNonexistentTargetAccount(t *testing.T) {
 	targetAccountId := account.NewAccountId()
 
 	// when
-	err = service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 3)
+	err = f.service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 3)
 
 	// then
 	assert.EqualError(t, err, "aggregate not found")
-	expectEvents(t, service, sourceAccountId, []eventstore.SequencedEvent{
+	expectEvents(t, f.service, sourceAccountId, []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
-	expectEvents(t, service, targetAccountId, nil)
+	expectEvents(t, f.service, targetAccountId, nil)
 }
 
 func TestDepositIdempotency(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.OpenAccount(id, ownerId)
+	err := f.service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
 	// when
 	transactionId := uuid.New()
-	err = service.Deposit(id, transactionId, 10)
+	err = f.service.Deposit(id, transactionId, 10)
 	assert.NoError(t, err)
-	err = service.Deposit(id, transactionId, 10)
+	err = f.service.Deposit(id, transactionId, 10)
 	assert.NoError(t, err)
 
 	// then
-	snapshot, err := service.QueryAccount(id)
+	snapshot, err := f.service.QueryAccount(id)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(10), snapshot.Balance)
 }
 
 func TestWithdrawalIdempotency(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.OpenAccount(id, ownerId)
+	err := f.service.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
-	err = service.Deposit(id, uuid.New(), 100)
+	err = f.service.Deposit(id, uuid.New(), 100)
 	assert.NoError(t, err)
 
 	// when
 	transactionId := uuid.New()
-	err = service.Withdraw(id, transactionId, 10)
+	err = f.service.Withdraw(id, transactionId, 10)
 	assert.NoError(t, err)
-	err = service.Withdraw(id, transactionId, 10)
+	err = f.service.Withdraw(id, transactionId, 10)
 	assert.NoError(t, err)
 
 	// then
-	snapshot, err := service.QueryAccount(id)
+	snapshot, err := f.service.QueryAccount(id)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(90), snapshot.Balance)
 }
 
 func TestTransferIdempotency(t *testing.T) {
 	// given
-	service := newAccountService()
+	f := newEsTestFixture()
 
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err := service.OpenAccount(sourceAccountId, sourceOwnerId)
+	err := f.service.OpenAccount(sourceAccountId, sourceOwnerId)
 	assert.NoError(t, err)
-	err = service.Deposit(sourceAccountId, uuid.New(), 100)
+	err = f.service.Deposit(sourceAccountId, uuid.New(), 100)
 	assert.NoError(t, err)
 
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err = service.OpenAccount(targetAccountId, targetOwnerId)
+	err = f.service.OpenAccount(targetAccountId, targetOwnerId)
 	assert.NoError(t, err)
 
 	// when
 	transactionId := uuid.New()
-	err = service.Transfer(sourceAccountId, targetAccountId, transactionId, 60)
+	err = f.service.Transfer(sourceAccountId, targetAccountId, transactionId, 60)
 	assert.NoError(t, err)
-	err = service.Transfer(sourceAccountId, targetAccountId, transactionId, 60)
+	err = f.service.Transfer(sourceAccountId, targetAccountId, transactionId, 60)
 	assert.NoError(t, err)
 
 	// then
-	snapshot, err := service.QueryAccount(sourceAccountId)
+	snapshot, err := f.service.QueryAccount(sourceAccountId)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(40), snapshot.Balance)
-	snapshot, err = service.QueryAccount(targetAccountId)
+	snapshot, err = f.service.QueryAccount(targetAccountId)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(60), snapshot.Balance)
 }

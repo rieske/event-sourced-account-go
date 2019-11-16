@@ -7,7 +7,7 @@ import (
 	"github.com/rieske/event-sourced-account-go/eventstore"
 )
 
-type eventStore interface {
+type EventStore interface {
 	Events(id account.Id, version int) ([]eventstore.SequencedEvent, error)
 	Append(events []eventstore.SequencedEvent, snapshots map[account.Id]eventstore.SequencedEvent, txId uuid.UUID) error
 	LoadSnapshot(id account.Id) (eventstore.SequencedEvent, error)
@@ -15,14 +15,14 @@ type eventStore interface {
 }
 
 type eventStream struct {
-	eventStore           eventStore
+	eventStore           EventStore
 	snapshotFrequency    int
 	versions             map[account.Id]int
 	uncommittedEvents    []eventstore.SequencedEvent
 	uncommittedSnapshots map[account.Id]eventstore.SequencedEvent
 }
 
-func newEventStream(es eventStore, snapshotFrequency int) *eventStream {
+func newEventStream(es EventStore, snapshotFrequency int) *eventStream {
 	if snapshotFrequency < 0 {
 		panic("snapshot frequency can not be negative")
 	}

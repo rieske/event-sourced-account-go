@@ -7,14 +7,14 @@ import (
 )
 
 type repository struct {
-	store             eventStore
+	store             EventStore
 	snapshotFrequency int
 }
 
 type transaction func(*account.Account) error
 type biTransaction func(*account.Account, *account.Account) error
 
-func NewAccountRepository(es eventStore, snapshotFrequency int) *repository {
+func NewAccountRepository(es EventStore, snapshotFrequency int) *repository {
 	return &repository{es, snapshotFrequency}
 }
 
