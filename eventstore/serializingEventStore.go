@@ -29,6 +29,13 @@ type serializingEventStore struct {
 	serializer eventSerializer
 }
 
+func NewSerializingEventStore(store eventStore, serializer eventSerializer) *serializingEventStore {
+	return &serializingEventStore{
+		store:      store,
+		serializer: serializer,
+	}
+}
+
 func (s serializingEventStore) Events(id account.Id, version int) ([]SequencedEvent, error) {
 	serializedEvents, err := s.store.Events(id, version)
 	if err != nil {

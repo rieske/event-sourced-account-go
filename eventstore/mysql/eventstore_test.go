@@ -17,7 +17,7 @@ var store *sqlStore
 
 func TestMain(m *testing.M) {
 	test.WithMysqlDatabase(func(db *sql.DB) {
-		store = NewSqlStore(db)
+		store = NewSqlStore(db, "schema")
 
 		code := m.Run()
 
@@ -111,4 +111,30 @@ func TestSqlStore_Snapshot(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, snapshot)
 	assert.Equal(t, expectedSnapshot, *snapshot)
+}
+
+func TestSqlStore_ConcurrentModificationErrorOnDuplicateEventSequence(t *testing.T) {
+	id := account.NewAccountId()
+	expectedEvents := []eventstore.SerializedEvent{{
+		AggregateId: id,
+		Seq:         11,
+		Payload:     []byte("test"),
+		EventType:   42,
+	}}
+	err := store.Append(expectedEvents, nil, uuid.New())
+	assert.NoError(t, err)
+
+	duplicateSequence := []eventstore.SerializedEvent{{
+		AggregateId: id,
+		Seq:         11,
+		Payload:     []byte("banana"),
+		EventType:   10,
+	}}
+	err = store.Append(duplicateSequence, nil, uuid.New())
+	assert.EqualError(t, err, "concurrent modification error")
+
+	events, err := store.Events(id, 0)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedEvents, events)
 }

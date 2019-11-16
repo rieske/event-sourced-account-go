@@ -11,6 +11,10 @@ import (
 type jsonEventSerializer struct {
 }
 
+func NewJsonEventSerializer() *jsonEventSerializer {
+	return &jsonEventSerializer{}
+}
+
 const (
 	snapshot = iota + 1
 	accountOpened

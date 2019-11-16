@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"database/sql"
+	"errors"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
@@ -11,18 +12,19 @@ import (
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"io"
 	"log"
+	"strings"
 )
 
 type sqlStore struct {
 	db *sql.DB
 }
 
-func NewSqlStore(db *sql.DB) *sqlStore {
+func NewSqlStore(db *sql.DB, schemaLocation string) *sqlStore {
 	driver, err := mysql.WithInstance(db, &mysql.Config{})
 	if err != nil {
 		log.Panic(err)
 	}
-	m, err := migrate.NewWithDatabaseInstance("file://schema", "event_store", driver)
+	m, err := migrate.NewWithDatabaseInstance("file://"+schemaLocation, "event_store", driver)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -107,6 +109,11 @@ func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, erro
 }
 
 func (es *sqlStore) Append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
+	err := es.append(events, snapshots, txId)
+	return toConcurrentModification(err)
+}
+
+func (es *sqlStore) append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
 	aggregateIds := map[account.Id]bool{}
 	for _, event := range events {
 		aggregateIds[event.AggregateId] = true
@@ -173,6 +180,20 @@ func (es *sqlStore) Append(events []eventstore.SerializedEvent, snapshots map[ac
 	}
 
 	return tx.Commit()
+}
+
+func toConcurrentModification(err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.HasPrefix(err.Error(), "Error 1062: Duplicate entry") &&
+		strings.HasSuffix(err.Error(), "for key 'PRIMARY'") {
+		return errors.New("concurrent modification error")
+	} else if err.Error() == "Error 1213: Deadlock found when trying to get lock; try restarting transaction" {
+		return errors.New("concurrent modification error")
+	} else {
+		return err
+	}
 }
 
 func CloseResource(c io.Closer) {

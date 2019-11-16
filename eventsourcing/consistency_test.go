@@ -88,9 +88,9 @@ func (suite *ConsistencyTestSuite) withRetryOnConcurrentModification(wg *sync.Wa
 		}
 		//fmt.Printf("thread %v retrying...\n", threadNo)
 		if err.Error() != "concurrent modification error" {
-			suite.Errorf(
-				err,
+			suite.T().Errorf(
 				"Expecting only concurrent modification errors, got %v, threadNo %v, iteration %v",
+				err,
 				threadNo,
 				iteration,
 			)
