@@ -1,8 +1,9 @@
-package eventsourcing
+package eventsourcing_test
 
 import (
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -10,12 +11,12 @@ import (
 )
 
 type consistencyTestFixture struct {
-	accountService  AccountService
+	accountService  *eventsourcing.AccountService
 	operationCount  int
 	concurrentUsers int
 }
 
-func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s AccountService) error) {
+func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s *eventsourcing.AccountService) error) {
 	for i := 0; i < f.operationCount; i++ {
 		wg := sync.WaitGroup{}
 		wg.Add(f.concurrentUsers)
@@ -28,7 +29,7 @@ func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s Accou
 	}
 }
 
-func (f consistencyTestFixture) doConcurrentTransactions(t *testing.T, action func(s AccountService, txId uuid.UUID) error) {
+func (f consistencyTestFixture) doConcurrentTransactions(t *testing.T, action func(s *eventsourcing.AccountService, txId uuid.UUID) error) {
 	for i := 0; i < f.operationCount; i++ {
 		var txId = uuid.New()
 		wg := sync.WaitGroup{}
@@ -43,7 +44,7 @@ func (f consistencyTestFixture) doConcurrentTransactions(t *testing.T, action fu
 }
 
 func newConsistencyTestFixture(snapshottingFrequency int) *consistencyTestFixture {
-	accountService := AccountService{NewAccountRepository(eventstore.NewInMemoryStore(), snapshottingFrequency)}
+	accountService := eventsourcing.NewAccountService(eventstore.NewInMemoryStore(), snapshottingFrequency)
 
 	return &consistencyTestFixture{
 		accountService:  accountService,
@@ -80,7 +81,7 @@ func testConcurrentDeposits(t *testing.T, snapshottingFrequency int) {
 	err := fixture.accountService.OpenAccount(id, ownerId)
 	assert.NoError(t, err)
 
-	fixture.doConcurrently(t, func(s AccountService) error {
+	fixture.doConcurrently(t, func(s *eventsourcing.AccountService) error {
 		return s.Deposit(id, uuid.New(), 1)
 	})
 
@@ -106,7 +107,7 @@ func testConcurrentTransfers(t *testing.T, snapshottingFrequency int) {
 	assert.NoError(t, err)
 
 	// when
-	fixture.doConcurrently(t, func(s AccountService) error {
+	fixture.doConcurrently(t, func(s *eventsourcing.AccountService) error {
 		return s.Transfer(sourceAccountId, targetAccountId, uuid.New(), 1)
 	})
 
@@ -137,7 +138,7 @@ func testConcurrentIdempotentTransfers(t *testing.T, snapshottingFrequency int) 
 	assert.NoError(t, err)
 
 	// when
-	fixture.doConcurrentTransactions(t, func(s AccountService, txId uuid.UUID) error {
+	fixture.doConcurrentTransactions(t, func(s *eventsourcing.AccountService, txId uuid.UUID) error {
 		return s.Transfer(sourceAccountId, targetAccountId, txId, 1)
 	})
 
