@@ -6,8 +6,31 @@ import (
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
+
+type EventsourcingTestSuite struct {
+	suite.Suite
+	service *eventsourcing.AccountService
+	store   eventsourcing.EventStore
+}
+
+func (s *EventsourcingTestSuite) TestFoo() {
+
+}
+
+func (s *EventsourcingTestSuite) TestBar() {
+
+}
+
+func TestEventSourcingSuiteInMemory(t *testing.T) {
+	suite.Run(t, &EventsourcingTestSuite{suite.Suite{}, nil, nil})
+}
+
+func TestEventSourcingSuiteInMemoryDb(t *testing.T) {
+	suite.Run(t, &EventsourcingTestSuite{suite.Suite{}, nil, nil})
+}
 
 type esTestFixture struct {
 	service *eventsourcing.AccountService
