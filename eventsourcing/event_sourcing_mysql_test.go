@@ -1,6 +1,6 @@
 package eventsourcing_test
 
-/*func TestEventSourcingSuiteMysql(t *testing.T) {
+/*func TestEventSourcingMysql(t *testing.T) {
 	suite.Run(t, &EventsourcingTestSuite{suite.Suite{}, nil, nil})
 }
 */

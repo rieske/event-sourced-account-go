@@ -5,55 +5,69 @@ import (
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/rieske/event-sourced-account-go/eventstore"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"sync"
 	"testing"
 )
 
-type consistencyTestFixture struct {
+type ConsistencyTestSuite struct {
+	suite.Suite
 	accountService  *eventsourcing.AccountService
 	operationCount  int
 	concurrentUsers int
 }
 
-func (f consistencyTestFixture) doConcurrently(t *testing.T, action func(s *eventsourcing.AccountService) error) {
-	for i := 0; i < f.operationCount; i++ {
-		wg := sync.WaitGroup{}
-		wg.Add(f.concurrentUsers)
-		for j := 0; j < f.concurrentUsers; j++ {
-			go withRetryOnConcurrentModification(t, &wg, i, j, func() error {
-				return action(f.accountService)
-			})
-		}
-		wg.Wait()
-	}
-}
-
-func (f consistencyTestFixture) doConcurrentTransactions(t *testing.T, action func(s *eventsourcing.AccountService, txId uuid.UUID) error) {
-	for i := 0; i < f.operationCount; i++ {
-		var txId = uuid.New()
-		wg := sync.WaitGroup{}
-		wg.Add(f.concurrentUsers)
-		for j := 0; j < f.concurrentUsers; j++ {
-			go withRetryOnConcurrentModification(t, &wg, i, j, func() error {
-				return action(f.accountService, txId)
-			})
-		}
-		wg.Wait()
-	}
-}
-
-func newConsistencyTestFixture(snapshottingFrequency int) *consistencyTestFixture {
-	accountService := eventsourcing.NewAccountService(eventstore.NewInMemoryStore(), snapshottingFrequency)
-
-	return &consistencyTestFixture{
-		accountService:  accountService,
+func TestConsistencyInMemory(t *testing.T) {
+	store := eventstore.NewInMemoryStore()
+	testSuite := ConsistencyTestSuite{
+		Suite:           suite.Suite{},
+		accountService:  eventsourcing.NewAccountService(store, 0),
 		operationCount:  100,
 		concurrentUsers: 8,
 	}
+
+	suite.Run(t, &testSuite)
 }
 
-func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, iteration, threadNo int, operation func() error) {
+/*func TestConsistencyInMemoryDb(t *testing.T) {
+	testSuite := ConsistencyTestSuite{
+		Suite:           suite.Suite{},
+		service:         eventsourcing.NewAccountService(store, 0),
+		operationCount:  100,
+		concurrentUsers: 8,
+	}
+
+	suite.Run(t, &testSuite)
+}*/
+
+func (suite *ConsistencyTestSuite) doConcurrently(action func(s *eventsourcing.AccountService) error) {
+	for i := 0; i < suite.operationCount; i++ {
+		wg := sync.WaitGroup{}
+		wg.Add(suite.concurrentUsers)
+		for j := 0; j < suite.concurrentUsers; j++ {
+			go suite.withRetryOnConcurrentModification(&wg, i, j, func() error {
+				return action(suite.accountService)
+			})
+		}
+		wg.Wait()
+	}
+}
+
+func (suite *ConsistencyTestSuite) doConcurrentTransactions(action func(s *eventsourcing.AccountService, txId uuid.UUID) error) {
+	for i := 0; i < suite.operationCount; i++ {
+		var txId = uuid.New()
+		wg := sync.WaitGroup{}
+		wg.Add(suite.concurrentUsers)
+		for j := 0; j < suite.concurrentUsers; j++ {
+			go suite.withRetryOnConcurrentModification(&wg, i, j, func() error {
+				return action(suite.accountService, txId)
+			})
+		}
+		wg.Wait()
+	}
+}
+
+func (suite *ConsistencyTestSuite) withRetryOnConcurrentModification(wg *sync.WaitGroup, iteration, threadNo int, operation func() error) {
 	//fmt.Printf("thread %v\n", threadNo)
 	for {
 		err := operation()
@@ -62,9 +76,9 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, iterati
 		}
 		//fmt.Printf("thread %v retrying...\n", threadNo)
 		if err.Error() != "concurrent modification error" {
-			t.Errorf(
+			suite.Errorf(
+				err,
 				"Expecting only concurrent modification errors, got %v, threadNo %v, iteration %v",
-				err.Error(),
 				threadNo,
 				iteration,
 			)
@@ -74,104 +88,98 @@ func withRetryOnConcurrentModification(t *testing.T, wg *sync.WaitGroup, iterati
 	wg.Done()
 }
 
-func testConcurrentDeposits(t *testing.T, snapshottingFrequency int) {
-	fixture := newConsistencyTestFixture(snapshottingFrequency)
-
+func (suite *ConsistencyTestSuite) testConcurrentDeposits(snapshottingFrequency int) {
 	id, ownerId := account.NewAccountId(), account.NewOwnerId()
-	err := fixture.accountService.OpenAccount(id, ownerId)
-	assert.NoError(t, err)
+	err := suite.accountService.OpenAccount(id, ownerId)
+	suite.NoError(err)
 
-	fixture.doConcurrently(t, func(s *eventsourcing.AccountService) error {
+	suite.doConcurrently(func(s *eventsourcing.AccountService) error {
 		return s.Deposit(id, uuid.New(), 1)
 	})
 
-	snapshot, err := fixture.accountService.QueryAccount(id)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(fixture.operationCount*fixture.concurrentUsers), snapshot.Balance)
+	snapshot, err := suite.accountService.QueryAccount(id)
+	suite.NoError(err)
+	suite.Equal(int64(suite.operationCount*suite.concurrentUsers), snapshot.Balance)
 }
 
-func testConcurrentTransfers(t *testing.T, snapshottingFrequency int) {
+func (suite *ConsistencyTestSuite) testConcurrentTransfers(snapshottingFrequency int) {
 	// given
-	fixture := newConsistencyTestFixture(snapshottingFrequency)
-
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err := fixture.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
-	assert.NoError(t, err)
-	err = fixture.accountService.Deposit(sourceAccountId, uuid.New(), int64(fixture.operationCount*fixture.concurrentUsers))
-	assert.NoError(t, err)
+	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
+	suite.NoError(err)
+	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount*suite.concurrentUsers))
+	suite.NoError(err)
 
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err = fixture.accountService.OpenAccount(targetAccountId, targetOwnerId)
-	assert.NoError(t, err)
-	err = fixture.accountService.Deposit(targetAccountId, uuid.New(), int64(fixture.operationCount))
-	assert.NoError(t, err)
+	err = suite.accountService.OpenAccount(targetAccountId, targetOwnerId)
+	suite.NoError(err)
+	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))
+	suite.NoError(err)
 
 	// when
-	fixture.doConcurrently(t, func(s *eventsourcing.AccountService) error {
+	suite.doConcurrently(func(s *eventsourcing.AccountService) error {
 		return s.Transfer(sourceAccountId, targetAccountId, uuid.New(), 1)
 	})
 
 	// then
-	sourceSnapshot, err := fixture.accountService.QueryAccount(sourceAccountId)
-	assert.NoError(t, err)
-	assert.Zero(t, sourceSnapshot.Balance)
+	sourceSnapshot, err := suite.accountService.QueryAccount(sourceAccountId)
+	suite.NoError(err)
+	suite.Zero(sourceSnapshot.Balance)
 
-	targetSnapshot, err := fixture.accountService.QueryAccount(targetAccountId)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(fixture.operationCount*fixture.concurrentUsers+fixture.operationCount), targetSnapshot.Balance)
+	targetSnapshot, err := suite.accountService.QueryAccount(targetAccountId)
+	suite.NoError(err)
+	suite.Equal(int64(suite.operationCount*suite.concurrentUsers+suite.operationCount), targetSnapshot.Balance)
 }
 
-func testConcurrentIdempotentTransfers(t *testing.T, snapshottingFrequency int) {
+func (suite *ConsistencyTestSuite) testConcurrentIdempotentTransfers(snapshottingFrequency int) {
 	// given
-	fixture := newConsistencyTestFixture(snapshottingFrequency)
-
 	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err := fixture.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
-	assert.NoError(t, err)
-	err = fixture.accountService.Deposit(sourceAccountId, uuid.New(), int64(fixture.operationCount))
-	assert.NoError(t, err)
+	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
+	suite.NoError(err)
+	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount))
+	suite.NoError(err)
 
 	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
-	err = fixture.accountService.OpenAccount(targetAccountId, targetOwnerId)
-	assert.NoError(t, err)
-	err = fixture.accountService.Deposit(targetAccountId, uuid.New(), int64(fixture.operationCount))
-	assert.NoError(t, err)
+	err = suite.accountService.OpenAccount(targetAccountId, targetOwnerId)
+	suite.NoError(err)
+	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))
+	suite.NoError(err)
 
 	// when
-	fixture.doConcurrentTransactions(t, func(s *eventsourcing.AccountService, txId uuid.UUID) error {
+	suite.doConcurrentTransactions(func(s *eventsourcing.AccountService, txId uuid.UUID) error {
 		return s.Transfer(sourceAccountId, targetAccountId, txId, 1)
 	})
 
 	// then
-	sourceSnapshot, err := fixture.accountService.QueryAccount(sourceAccountId)
-	assert.NoError(t, err)
-	assert.Zero(t, sourceSnapshot.Balance)
+	sourceSnapshot, err := suite.accountService.QueryAccount(sourceAccountId)
+	suite.NoError(err)
+	suite.Zero(sourceSnapshot.Balance)
 
-	targetSnapshot, err := fixture.accountService.QueryAccount(targetAccountId)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(fixture.operationCount*2), targetSnapshot.Balance)
+	targetSnapshot, err := suite.accountService.QueryAccount(targetAccountId)
+	suite.NoError(err)
+	suite.Equal(int64(suite.operationCount*2), targetSnapshot.Balance)
 }
 
-func TestConcurrentDeposits(t *testing.T) {
-	testConcurrentDeposits(t, 0)
+func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
+	suite.testConcurrentDeposits(0)
 }
 
-func TestConcurrentDepositsWithSnapshotting(t *testing.T) {
-	testConcurrentDeposits(t, 5)
+func (suite *ConsistencyTestSuite) TestConcurrentDepositsWithSnapshotting() {
+	suite.testConcurrentDeposits(5)
 }
 
-func TestConcurrentTransfers(t *testing.T) {
-	testConcurrentTransfers(t, 0)
+func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
+	suite.testConcurrentTransfers(0)
 }
 
-func TestConcurrentTransfersWithSnapshotting(t *testing.T) {
-	testConcurrentTransfers(t, 5)
+func (suite *ConsistencyTestSuite) TestConcurrentTransfersWithSnapshotting() {
+	suite.testConcurrentTransfers(5)
 }
 
-func TestConcurrentIdempotentTransfers(t *testing.T) {
-	testConcurrentIdempotentTransfers(t, 0)
+func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfers() {
+	suite.testConcurrentIdempotentTransfers(0)
 }
 
-func TestConcurrentIdempotentTransfersWithSnapshotting(t *testing.T) {
-	testConcurrentIdempotentTransfers(t, 5)
+func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfersWithSnapshotting() {
+	suite.testConcurrentIdempotentTransfers(5)
 }

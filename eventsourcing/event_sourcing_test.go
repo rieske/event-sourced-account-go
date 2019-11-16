@@ -15,6 +15,21 @@ type EventsourcingTestSuite struct {
 	store   eventsourcing.EventStore
 }
 
+func TestEventSourcingInMemory(t *testing.T) {
+	store := eventstore.NewInMemoryStore()
+	testSuite := EventsourcingTestSuite{
+		Suite:   suite.Suite{},
+		service: eventsourcing.NewAccountService(store, 0),
+		store:   store,
+	}
+
+	suite.Run(t, &testSuite)
+}
+
+/*func TestEventSourcingInMemoryDb(t *testing.T) {
+	suite.Run(t, &EventsourcingTestSuite{suite.Suite{}, nil, nil})
+}*/
+
 func (suite *EventsourcingTestSuite) expectEvents(id account.Id, expected []eventstore.SequencedEvent) {
 	actual, err := suite.service.Events(id)
 	suite.NoError(err)
@@ -256,18 +271,3 @@ func (suite *EventsourcingTestSuite) TestTransferIdempotency() {
 	suite.NoError(err)
 	suite.Equal(int64(60), snapshot.Balance)
 }
-
-func TestEventSourcingSuiteInMemory(t *testing.T) {
-	store := eventstore.NewInMemoryStore()
-	testSuite := EventsourcingTestSuite{
-		Suite:   suite.Suite{},
-		service: eventsourcing.NewAccountService(store, 0),
-		store:   store,
-	}
-
-	suite.Run(t, &testSuite)
-}
-
-/*func TestEventSourcingSuiteInMemoryDb(t *testing.T) {
-	suite.Run(t, &EventsourcingTestSuite{suite.Suite{}, nil, nil})
-}*/
