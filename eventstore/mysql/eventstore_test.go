@@ -1,23 +1,24 @@
 // +build integration
 
-package mysql
+package mysql_test
 
 import (
 	"database/sql"
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
+	"github.com/rieske/event-sourced-account-go/eventstore/mysql"
 	"github.com/rieske/event-sourced-account-go/test"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
 
-var store *sqlStore
+var store *mysql.EventStore
 
 func TestMain(m *testing.M) {
 	test.WithMysqlDatabase(func(db *sql.DB) {
-		store = NewSqlStore(db, "schema")
+		store = mysql.NewEventStore(db, "schema")
 
 		code := m.Run()
 

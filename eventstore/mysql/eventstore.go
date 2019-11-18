@@ -15,11 +15,11 @@ import (
 	"strings"
 )
 
-type sqlStore struct {
+type EventStore struct {
 	db *sql.DB
 }
 
-func NewSqlStore(db *sql.DB, schemaLocation string) *sqlStore {
+func NewEventStore(db *sql.DB, schemaLocation string) *EventStore {
 	driver, err := mysql.WithInstance(db, &mysql.Config{})
 	if err != nil {
 		log.Panic(err)
@@ -32,10 +32,10 @@ func NewSqlStore(db *sql.DB, schemaLocation string) *sqlStore {
 	if err != nil {
 		log.Panic(err)
 	}
-	return &sqlStore{db: db}
+	return &EventStore{db: db}
 }
 
-func (es *sqlStore) Events(id account.Id, version int) ([]eventstore.SerializedEvent, error) {
+func (es *EventStore) Events(id account.Id, version int) ([]eventstore.SerializedEvent, error) {
 	stmt, err := es.db.Prepare("SELECT sequenceNumber, eventType, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (es *sqlStore) Events(id account.Id, version int) ([]eventstore.SerializedE
 	return events, nil
 }
 
-func (es *sqlStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, error) {
+func (es *EventStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, error) {
 	stmt, err := es.db.Prepare("SELECT sequenceNumber, eventType, payload FROM event_store.Snapshot WHERE aggregateId = ?")
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (es *sqlStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, er
 	return snapshot, nil
 }
 
-func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
+func (es *EventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
 	stmt, err := es.db.Prepare("SELECT aggregateId FROM event_store.Transaction WHERE aggregateId = ? AND transactionId = ?")
 	if err != nil {
 		return false, err
@@ -108,12 +108,12 @@ func (es *sqlStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, erro
 	return transactionExists, nil
 }
 
-func (es *sqlStore) Append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
+func (es *EventStore) Append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
 	err := es.append(events, snapshots, txId)
 	return toConcurrentModification(err)
 }
 
-func (es *sqlStore) append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
+func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
 	aggregateIds := map[account.Id]bool{}
 	for _, event := range events {
 		aggregateIds[event.AggregateId] = true
