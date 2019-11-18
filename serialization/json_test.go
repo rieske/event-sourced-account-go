@@ -1,14 +1,15 @@
-package serialization
+package serialization_test
 
 import (
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
+	"github.com/rieske/event-sourced-account-go/serialization"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-var serializer = jsonEventSerializer{}
+var serializer = serialization.NewJsonEventSerializer()
 
 type jsonTestFixture struct {
 	event           eventstore.SequencedEvent
@@ -36,7 +37,7 @@ func newSnapshotJsonTestFixture(t *testing.T) jsonTestFixture {
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"Id":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","OwnerId":"c2b0bbce-679a-4af5-9a75-8958da9eb02c","Balance":20,"Open":true}`),
-			EventType:   snapshot,
+			EventType:   serialization.Snapshot,
 		},
 	}
 }
@@ -60,7 +61,7 @@ func newAccountOpenedJsonTestFixture(t *testing.T) jsonTestFixture {
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"AccountId":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","OwnerId":"c2b0bbce-679a-4af5-9a75-8958da9eb02c"}`),
-			EventType:   accountOpened,
+			EventType:   serialization.AccountOpened,
 		},
 	}
 }
@@ -82,7 +83,7 @@ func newMoneyDepositedJsonTestFixture(t *testing.T) jsonTestFixture {
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"AmountDeposited":5,"Balance":10}`),
-			EventType:   moneyDeposited,
+			EventType:   serialization.MoneyDeposited,
 		},
 	}
 }
@@ -104,7 +105,7 @@ func newMoneyWithdrawnJsonTestFixture(t *testing.T) jsonTestFixture {
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{"AmountWithdrawn":5,"Balance":10}`),
-			EventType:   moneyWithdrawn,
+			EventType:   serialization.MoneyWithdrawn,
 		},
 	}
 }
@@ -123,7 +124,7 @@ func newAccountClosedJsonTestFixture(t *testing.T) jsonTestFixture {
 			AggregateId: account.Id{accountId},
 			Seq:         42,
 			Payload:     []byte(`{}`),
-			EventType:   accountClosed,
+			EventType:   serialization.AccountClosed,
 		},
 	}
 }

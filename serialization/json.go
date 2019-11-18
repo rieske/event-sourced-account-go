@@ -16,25 +16,25 @@ func NewJsonEventSerializer() *jsonEventSerializer {
 }
 
 const (
-	snapshot = iota + 1
-	accountOpened
-	moneyDeposited
-	moneyWithdrawn
-	accountClosed
+	Snapshot = iota + 1
+	AccountOpened
+	MoneyDeposited
+	MoneyWithdrawn
+	AccountClosed
 )
 
 func eventTypeAlias(event account.Event) (int, error) {
 	switch t := event.(type) {
 	case account.Snapshot:
-		return snapshot, nil
+		return Snapshot, nil
 	case account.AccountOpenedEvent:
-		return accountOpened, nil
+		return AccountOpened, nil
 	case account.MoneyDepositedEvent:
-		return moneyDeposited, nil
+		return MoneyDeposited, nil
 	case account.MoneyWithdrawnEvent:
-		return moneyWithdrawn, nil
+		return MoneyWithdrawn, nil
 	case account.AccountClosedEvent:
-		return accountClosed, nil
+		return AccountClosed, nil
 	default:
 		return 0, errors.New(fmt.Sprintf("don't know how to alias %T", t))
 	}
@@ -42,23 +42,23 @@ func eventTypeAlias(event account.Event) (int, error) {
 
 func deserializeEvent(payload []byte, typeAlias int) (account.Event, error) {
 	switch typeAlias {
-	case snapshot:
+	case Snapshot:
 		var event account.Snapshot
 		err := json.Unmarshal(payload, &event)
 		return event, err
-	case accountOpened:
+	case AccountOpened:
 		var event account.AccountOpenedEvent
 		err := json.Unmarshal(payload, &event)
 		return event, err
-	case moneyDeposited:
+	case MoneyDeposited:
 		var event account.MoneyDepositedEvent
 		err := json.Unmarshal(payload, &event)
 		return event, err
-	case moneyWithdrawn:
+	case MoneyWithdrawn:
 		var event account.MoneyWithdrawnEvent
 		err := json.Unmarshal(payload, &event)
 		return event, err
-	case accountClosed:
+	case AccountClosed:
 		var event account.AccountClosedEvent
 		err := json.Unmarshal(payload, &event)
 		return event, err
