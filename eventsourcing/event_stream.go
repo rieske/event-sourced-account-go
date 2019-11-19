@@ -35,7 +35,7 @@ func newEventStream(es EventStore, snapshotFrequency int) *eventStream {
 }
 
 func (s *eventStream) applySnapshot(id account.Id) (*account.Account, int, error) {
-	a := account.NewAccount(s)
+	a := account.New(s)
 	snapshot, err := s.eventStore.LoadSnapshot(id)
 	if err != nil {
 		return nil, 0, err
@@ -74,10 +74,10 @@ func (s *eventStream) Append(e account.Event, a *account.Account, id account.Id)
 	e.Apply(a)
 	version := s.versions[id] + 1
 	s.versions[id] = version
-	se := eventstore.SequencedEvent{id, version, e}
+	se := eventstore.SequencedEvent{AggregateId: id, Seq: version, Event: e}
 	s.uncommittedEvents = append(s.uncommittedEvents, se)
 	if s.snapshotFrequency != 0 && version%s.snapshotFrequency == 0 {
-		s.uncommittedSnapshots[id] = eventstore.SequencedEvent{id, version, a.Snapshot()}
+		s.uncommittedSnapshots[id] = eventstore.SequencedEvent{AggregateId: id, Seq: version, Event: a.Snapshot()}
 	}
 }
 

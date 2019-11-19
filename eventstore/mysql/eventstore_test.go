@@ -28,14 +28,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestSqlStore_Events_Empty(t *testing.T) {
-	events, err := store.Events(account.NewAccountId(), 0)
+	events, err := store.Events(account.NewId(), 0)
 
 	assert.NoError(t, err)
 	assert.Empty(t, events)
 }
 
 func TestSqlStore_Events_SingleEvent(t *testing.T) {
-	id := account.NewAccountId()
+	id := account.NewId()
 	expectedEvents := []eventstore.SerializedEvent{{
 		AggregateId: id,
 		Seq:         11,
@@ -52,22 +52,22 @@ func TestSqlStore_Events_SingleEvent(t *testing.T) {
 }
 
 func TestSqlStore_NoTransactionExists(t *testing.T) {
-	transactionExists, err := store.TransactionExists(account.NewAccountId(), uuid.New())
+	transactionExists, err := store.TransactionExists(account.NewId(), uuid.New())
 
 	assert.NoError(t, err)
 	assert.False(t, transactionExists)
 }
 
 func TestSqlStore_NoSnapshot(t *testing.T) {
-	event, err := store.LoadSnapshot(account.NewAccountId())
+	event, err := store.LoadSnapshot(account.NewId())
 
 	assert.NoError(t, err)
 	assert.Nil(t, event)
 }
 
 func TestSqlStore_InsertTransactionIdForAllAggregatesInEvents(t *testing.T) {
-	sourceAccount := account.NewAccountId()
-	targetAccount := account.NewAccountId()
+	sourceAccount := account.NewId()
+	targetAccount := account.NewId()
 	expectedEvents := []eventstore.SerializedEvent{
 		{
 			AggregateId: sourceAccount,
@@ -92,13 +92,13 @@ func TestSqlStore_InsertTransactionIdForAllAggregatesInEvents(t *testing.T) {
 	transactionExists, err = store.TransactionExists(targetAccount, txId)
 	assert.NoError(t, err)
 	assert.True(t, transactionExists)
-	transactionExists, err = store.TransactionExists(account.NewAccountId(), txId)
+	transactionExists, err = store.TransactionExists(account.NewId(), txId)
 	assert.NoError(t, err)
 	assert.False(t, transactionExists)
 }
 
 func TestSqlStore_Snapshot(t *testing.T) {
-	id := account.NewAccountId()
+	id := account.NewId()
 	expectedSnapshot := eventstore.SerializedEvent{
 		AggregateId: id,
 		Seq:         11,
@@ -116,7 +116,7 @@ func TestSqlStore_Snapshot(t *testing.T) {
 }
 
 func TestSqlStore_ConcurrentModificationErrorOnDuplicateEventSequence(t *testing.T) {
-	id := account.NewAccountId()
+	id := account.NewId()
 	expectedEvents := []eventstore.SerializedEvent{{
 		AggregateId: id,
 		Seq:         11,

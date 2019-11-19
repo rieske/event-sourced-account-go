@@ -101,7 +101,7 @@ func (suite *ConsistencyTestSuite) withRetryOnConcurrentModification(wg *sync.Wa
 }
 
 func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.accountService.OpenAccount(id, ownerId)
 	suite.NoError(err)
 
@@ -116,13 +116,13 @@ func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
 
 func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
 	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount*suite.concurrentUsers))
 	suite.NoError(err)
 
-	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
+	targetAccountId, targetOwnerId := account.NewId(), account.NewOwnerId()
 	err = suite.accountService.OpenAccount(targetAccountId, targetOwnerId)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))
@@ -145,13 +145,13 @@ func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 
 func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfers() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
 	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)
 
-	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
+	targetAccountId, targetOwnerId := account.NewId(), account.NewOwnerId()
 	err = suite.accountService.OpenAccount(targetAccountId, targetOwnerId)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))

@@ -15,7 +15,7 @@ type transaction func(*account.Account) error
 type biTransaction func(*account.Account, *account.Account) error
 
 func NewAccountRepository(es EventStore, snapshotFrequency int) *repository {
-	return &repository{es, snapshotFrequency}
+	return &repository{store: es, snapshotFrequency: snapshotFrequency}
 }
 
 func (r repository) newEventStream() *eventStream {
@@ -107,7 +107,7 @@ func (r repository) newAggregate(id account.Id) (*aggregate, error) {
 		return &a, nil
 	}
 	a.es = r.newEventStream()
-	a.acc = account.NewAccount(a.es)
+	a.acc = account.New(a.es)
 	return &a, nil
 }
 

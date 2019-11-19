@@ -24,15 +24,15 @@ type Account struct {
 	open          bool
 }
 
-func NewAccountId() Id {
-	return Id{uuid.New()}
+func NewId() Id {
+	return Id{UUID: uuid.New()}
 }
 
 func NewOwnerId() OwnerId {
-	return OwnerId{uuid.New()}
+	return OwnerId{UUID: uuid.New()}
 }
 
-func NewAccount(es EventAppender) *Account {
+func New(es EventAppender) *Account {
 	return &Account{eventAppender: es}
 }
 
@@ -41,7 +41,7 @@ func (a Account) Id() Id {
 }
 
 func (a Account) Snapshot() Snapshot {
-	return Snapshot{a.id, a.ownerId, a.balance, a.open}
+	return Snapshot{Id: a.id, OwnerId: a.ownerId, Balance: a.balance, Open: a.open}
 }
 
 func (a *Account) Open(accountId Id, ownerId OwnerId) error {
@@ -49,7 +49,7 @@ func (a *Account) Open(accountId Id, ownerId OwnerId) error {
 		return errors.New("account already open")
 	}
 
-	event := AccountOpenedEvent{accountId, ownerId}
+	event := AccountOpenedEvent{AccountId: accountId, OwnerId: ownerId}
 	a.eventAppender.Append(event, a, accountId)
 	return nil
 }
@@ -65,7 +65,7 @@ func (a *Account) Deposit(amount int64) error {
 		return nil
 	}
 
-	event := MoneyDepositedEvent{amount, a.balance + amount}
+	event := MoneyDepositedEvent{AmountDeposited: amount, Balance: a.balance + amount}
 	a.eventAppender.Append(event, a, a.id)
 	return nil
 }
@@ -84,7 +84,7 @@ func (a *Account) Withdraw(amount int64) error {
 		return nil
 	}
 
-	event := MoneyWithdrawnEvent{amount, a.balance - amount}
+	event := MoneyWithdrawnEvent{AmountWithdrawn: amount, Balance: a.balance - amount}
 	a.eventAppender.Append(event, a, a.id)
 	return nil
 }

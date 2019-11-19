@@ -38,13 +38,13 @@ func (suite *EventsourcingTestSuite) expectEvents(id account.Id, expected []even
 }
 
 func (suite *EventsourcingTestSuite) TestOpenAccount() {
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.service.OpenAccount(id, ownerId)
 	suite.NoError(err)
 }
 
 func (suite *EventsourcingTestSuite) TestCanNotOpenDuplicateAccount() {
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.service.OpenAccount(id, ownerId)
 	suite.NoError(err)
 
@@ -53,17 +53,17 @@ func (suite *EventsourcingTestSuite) TestCanNotOpenDuplicateAccount() {
 }
 
 func (suite *EventsourcingTestSuite) TestCanOpenDistinctAccounts() {
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.service.OpenAccount(id, ownerId)
 	suite.NoError(err)
 
-	id = account.NewAccountId()
+	id = account.NewId()
 	err = suite.service.OpenAccount(id, ownerId)
 	suite.NoError(err)
 }
 
 func (suite *EventsourcingTestSuite) TestCanNotDepositWhenNoAccountExists() {
-	id := account.NewAccountId()
+	id := account.NewId()
 	err := suite.service.Deposit(id, uuid.New(), 42)
 
 	suite.EqualError(err, "aggregate not found")
@@ -71,7 +71,7 @@ func (suite *EventsourcingTestSuite) TestCanNotDepositWhenNoAccountExists() {
 
 func (suite *EventsourcingTestSuite) TestEventSourcing_Deposit() {
 	// given
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
@@ -93,7 +93,7 @@ func (suite *EventsourcingTestSuite) TestEventSourcing_Deposit() {
 
 func (suite *EventsourcingTestSuite) TestEventSourcing_Withdraw() {
 	// given
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
 			{id, 1, account.AccountOpenedEvent{id, ownerId}},
@@ -118,8 +118,8 @@ func (suite *EventsourcingTestSuite) TestEventSourcing_Withdraw() {
 
 func (suite *EventsourcingTestSuite) TestTransferMoney() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
-	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
+	targetAccountId, targetOwnerId := account.NewId(), account.NewOwnerId()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
@@ -149,8 +149,8 @@ func (suite *EventsourcingTestSuite) TestTransferMoney() {
 
 func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithInsufficientBalance() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
-	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
+	targetAccountId, targetOwnerId := account.NewId(), account.NewOwnerId()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
@@ -178,7 +178,7 @@ func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithInsufficientBalan
 
 func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithNonexistentTargetAccount() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
 			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
@@ -189,7 +189,7 @@ func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithNonexistentTarget
 	)
 	suite.NoError(err)
 
-	targetAccountId := account.NewAccountId()
+	targetAccountId := account.NewId()
 
 	// when
 	err = suite.service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 3)
@@ -205,7 +205,7 @@ func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithNonexistentTarget
 
 func (suite *EventsourcingTestSuite) TestDepositIdempotency() {
 	// given
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.service.OpenAccount(id, ownerId)
 	suite.NoError(err)
 
@@ -224,7 +224,7 @@ func (suite *EventsourcingTestSuite) TestDepositIdempotency() {
 
 func (suite *EventsourcingTestSuite) TestWithdrawalIdempotency() {
 	// given
-	id, ownerId := account.NewAccountId(), account.NewOwnerId()
+	id, ownerId := account.NewId(), account.NewOwnerId()
 	err := suite.service.OpenAccount(id, ownerId)
 	suite.NoError(err)
 
@@ -246,13 +246,13 @@ func (suite *EventsourcingTestSuite) TestWithdrawalIdempotency() {
 
 func (suite *EventsourcingTestSuite) TestTransferIdempotency() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewAccountId(), account.NewOwnerId()
+	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
 	err := suite.service.OpenAccount(sourceAccountId, sourceOwnerId)
 	suite.NoError(err)
 	err = suite.service.Deposit(sourceAccountId, uuid.New(), 100)
 	suite.NoError(err)
 
-	targetAccountId, targetOwnerId := account.NewAccountId(), account.NewOwnerId()
+	targetAccountId, targetOwnerId := account.NewId(), account.NewOwnerId()
 	err = suite.service.OpenAccount(targetAccountId, targetOwnerId)
 	suite.NoError(err)
 

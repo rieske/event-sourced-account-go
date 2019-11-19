@@ -13,9 +13,9 @@ func (s *immediateEventStream) Append(e account.Event, a *account.Account, id ac
 }
 
 func TestOpenAccount(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	err := a.Open(accountId, ownerId)
 
 	assert.NoError(t, err)
@@ -27,18 +27,18 @@ func TestOpenAccount(t *testing.T) {
 }
 
 func TestOpenAccountAlreadyOpen(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 	err := a.Open(accountId, ownerId)
 	assert.EqualError(t, err, "account already open")
 }
 
 func TestDeposit(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	err := a.Deposit(42)
@@ -49,9 +49,9 @@ func TestDeposit(t *testing.T) {
 }
 
 func TestDepositAccumulatesBalance(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	_ = a.Deposit(1)
@@ -62,9 +62,9 @@ func TestDepositAccumulatesBalance(t *testing.T) {
 }
 
 func TestCanNotDepositNegativeAmount(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	err := a.Deposit(-1)
@@ -75,9 +75,9 @@ func TestCanNotDepositNegativeAmount(t *testing.T) {
 }
 
 func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	err := a.Deposit(0)
@@ -86,7 +86,7 @@ func TestZeroDepositShouldNotEmitEvent(t *testing.T) {
 }
 
 func TestRequireOpenAccountForDeposit(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
 	err := a.Deposit(0)
 
@@ -94,9 +94,9 @@ func TestRequireOpenAccountForDeposit(t *testing.T) {
 }
 
 func TestWithdrawal(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 	_ = a.Deposit(10)
 
@@ -108,9 +108,9 @@ func TestWithdrawal(t *testing.T) {
 }
 
 func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	err := a.Withdraw(5)
@@ -119,9 +119,9 @@ func TestCanNotWithdrawWhenBalanceInsufficient(t *testing.T) {
 }
 
 func TestCanNotWithdrawNegativeAmount(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	err := a.Withdraw(-1)
@@ -130,9 +130,9 @@ func TestCanNotWithdrawNegativeAmount(t *testing.T) {
 }
 
 func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	err := a.Withdraw(0)
@@ -141,7 +141,7 @@ func TestZeroWithdrawalShouldNotEmitEvent(t *testing.T) {
 }
 
 func TestRequireOpenAccountForWithdrawal(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
 	err := a.Withdraw(1)
 
@@ -149,9 +149,9 @@ func TestRequireOpenAccountForWithdrawal(t *testing.T) {
 }
 
 func TestCloseAccount(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 
 	err := a.Close()
@@ -162,9 +162,9 @@ func TestCloseAccount(t *testing.T) {
 }
 
 func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	_ = a.Open(accountId, ownerId)
 	_ = a.Deposit(10)
 
@@ -174,9 +174,9 @@ func TestCanNotCloseAccountWithOutstandingBalance(t *testing.T) {
 }
 
 func TestApplyEvents(t *testing.T) {
-	a := account.NewAccount(&immediateEventStream{})
+	a := account.New(&immediateEventStream{})
 
-	accountId, ownerId := account.NewAccountId(), account.NewOwnerId()
+	accountId, ownerId := account.NewId(), account.NewOwnerId()
 	events := []account.Event{
 		account.AccountOpenedEvent{accountId, ownerId},
 		account.MoneyDepositedEvent{1, 1},
