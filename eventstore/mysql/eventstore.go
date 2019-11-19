@@ -3,7 +3,6 @@ package mysql
 import (
 	"database/sql"
 	"errors"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -19,7 +18,7 @@ type EventStore struct {
 	db *sql.DB
 }
 
-func NewEventStore(db *sql.DB, schemaLocation string) *EventStore {
+func MigrateSchema(db *sql.DB, schemaLocation string) {
 	driver, err := mysql.WithInstance(db, &mysql.Config{})
 	if err != nil {
 		log.Panic(err)
@@ -32,6 +31,9 @@ func NewEventStore(db *sql.DB, schemaLocation string) *EventStore {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+func NewEventStore(db *sql.DB) *EventStore {
 	return &EventStore{db: db}
 }
 

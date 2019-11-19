@@ -18,7 +18,8 @@ var store *mysql.EventStore
 
 func TestMain(m *testing.M) {
 	test.WithMysqlDatabase(func(db *sql.DB) {
-		store = mysql.NewEventStore(db, "schema")
+		mysql.MigrateSchema(db, "schema")
+		store = mysql.NewEventStore(db)
 
 		code := m.Run()
 
