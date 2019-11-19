@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
 	"log"
-	"time"
 )
 
 func WithMysqlDatabase(action func(db *sql.DB)) {
@@ -19,7 +19,6 @@ func WithMysqlDatabase(action func(db *sql.DB)) {
 		log.Panic(err)
 	}
 	defer closeResource(db)
-	waitForMysqlContainerToStart(db)
 	action(db)
 }
 
@@ -40,6 +39,7 @@ func startMysqlContainer(ctx context.Context) testcontainers.Container {
 			"MYSQL_USER":          "test",
 			"MYSQL_PASSWORD":      "test",
 		},
+		WaitingFor: wait.ForLog("port: 3306"),
 	}
 	mysql, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -58,20 +58,6 @@ func openDatabase(mysql testcontainers.Container, ctx context.Context) (*sql.DB,
 	}
 
 	return sql.Open("mysql", fmt.Sprintf("test:test@tcp(127.0.0.1:%v)/event_store", port.Port()))
-}
-
-func waitForMysqlContainerToStart(database *sql.DB) {
-	var err error
-	for i := 0; i < 30; i++ {
-		err = database.Ping()
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Second * 1)
-	}
-	if err != nil {
-		log.Panic(err)
-	}
 }
 
 func closeResource(c io.Closer) {
