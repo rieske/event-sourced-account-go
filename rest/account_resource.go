@@ -64,7 +64,6 @@ func (r *accountResource) createAccount(res http.ResponseWriter, accountId accou
 	if !ok {
 		return
 	}
-
 	switch err := r.accountService.OpenAccount(accountId, account.OwnerId{ownerId}); err {
 	case nil:
 		break

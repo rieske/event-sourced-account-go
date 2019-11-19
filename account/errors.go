@@ -1,13 +1,17 @@
 package account
 
-import "errors"
+type Error string
 
-var (
-	Exists              = errors.New("account already exists")
-	AlreadyOpen         = errors.New("account already open")
-	NotOpen             = errors.New("account not open")
-	NegativeDeposit     = errors.New("can not deposit negative amount")
-	NegativeWithdrawal  = errors.New("can not withdraw negative amount")
-	InsufficientBalance = errors.New("insufficient balance")
-	BalanceOutstanding  = errors.New("balance outstanding")
+func (e Error) Error() string {
+	return string(e)
+}
+
+const (
+	Exists              Error = "account already exists"
+	AlreadyOpen         Error = "account already open"
+	NotOpen             Error = "account not open"
+	NegativeDeposit     Error = "can not deposit negative amount"
+	NegativeWithdrawal  Error = "can not withdraw negative amount"
+	InsufficientBalance Error = "insufficient balance"
+	BalanceOutstanding  Error = "balance outstanding"
 )
