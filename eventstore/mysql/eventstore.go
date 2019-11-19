@@ -27,8 +27,8 @@ func MigrateSchema(db *sql.DB, schemaLocation string) {
 	if err != nil {
 		log.Panic(err)
 	}
-	err = m.Steps(3)
-	if err != nil {
+
+	if err := m.Steps(3); err != nil {
 		log.Panic(err)
 	}
 }
@@ -58,7 +58,7 @@ func (es *EventStore) Events(id account.Id, version int) ([]eventstore.Serialize
 		}
 		events = append(events, event)
 	}
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return events, nil
@@ -103,7 +103,7 @@ func (es *EventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, er
 	}
 	defer CloseResource(rows)
 	transactionExists := rows.Next()
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return transactionExists, err
 	}
 
@@ -199,8 +199,7 @@ func toConcurrentModification(err error) error {
 }
 
 func CloseResource(c io.Closer) {
-	err := c.Close()
-	if err != nil {
+	if err := c.Close(); err != nil {
 		log.Println(err)
 	}
 }

@@ -82,8 +82,7 @@ func (s *eventStream) Append(e account.Event, a *account.Account, id account.Id)
 }
 
 func (s *eventStream) commit(txId uuid.UUID) error {
-	err := s.eventStore.Append(s.uncommittedEvents, s.uncommittedSnapshots, txId)
-	if err != nil {
+	if err := s.eventStore.Append(s.uncommittedEvents, s.uncommittedSnapshots, txId); err != nil {
 		return err
 	}
 	s.uncommittedEvents = nil

@@ -23,6 +23,7 @@ func WithMysqlDatabase(action func(db *sql.DB)) {
 }
 
 func terminateContainer(c testcontainers.Container, ctx context.Context) {
+	log.Println("Terminating mysql container")
 	err := c.Terminate(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -48,6 +49,8 @@ func startMysqlContainer(ctx context.Context) testcontainers.Container {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	log.Println("Started mysql container")
 	return mysql
 }
 

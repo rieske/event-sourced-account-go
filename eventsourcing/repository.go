@@ -69,8 +69,7 @@ func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx
 	if transactionExists {
 		return nil
 	}
-	err = tx(source, target)
-	if err != nil {
+	if err := tx(source, target); err != nil {
 		return err
 	}
 
