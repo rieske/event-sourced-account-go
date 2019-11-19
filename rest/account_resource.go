@@ -30,6 +30,8 @@ func (r *accountResource) ServeHTTP(res http.ResponseWriter, req *http.Request) 
 	case http.MethodPut:
 		head, req.URL.Path = shiftPath(req.URL.Path)
 		r.put(res, head, account.Id{accountId}, req.URL.Query())
+	case http.MethodDelete:
+		r.delete(res, account.Id{accountId})
 	default:
 		respondWithError(res, http.StatusMethodNotAllowed, errors.New("method not allowed"))
 	}
@@ -71,6 +73,8 @@ func (r *accountResource) put(res http.ResponseWriter, action string, id account
 		r.deposit(res, id, query)
 	case "withdraw":
 		r.withdraw(res, id, query)
+	case "transfer":
+		r.transfer(res, id, query)
 	default:
 		respondWithError(res, http.StatusBadRequest, errors.New("action not supported"))
 	}
@@ -105,6 +109,37 @@ func (r *accountResource) withdraw(res http.ResponseWriter, id account.Id, query
 	}
 
 	if err := r.accountService.Withdraw(id, txId, amount); err != nil {
+		handleDomainError(res, err)
+		return
+	}
+
+	res.WriteHeader(http.StatusNoContent)
+}
+
+func (r *accountResource) delete(res http.ResponseWriter, id account.Id) {
+	if err := r.accountService.CloseAccount(id); err != nil {
+		handleDomainError(res, err)
+		return
+	}
+
+	res.WriteHeader(http.StatusNoContent)
+}
+
+func (r *accountResource) transfer(res http.ResponseWriter, sourceAccountId account.Id, query url.Values) {
+	targetAccountId, ok := parseUUID(res, query.Get("targetAccount"))
+	if !ok {
+		return
+	}
+	amount, ok := parseAmount(res, query.Get("amount"))
+	if !ok {
+		return
+	}
+	txId, ok := parseUUID(res, query.Get("transactionId"))
+	if !ok {
+		return
+	}
+
+	if err := r.accountService.Transfer(sourceAccountId, account.Id{targetAccountId}, txId, amount); err != nil {
 		handleDomainError(res, err)
 		return
 	}

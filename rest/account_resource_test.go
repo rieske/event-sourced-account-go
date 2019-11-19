@@ -56,6 +56,16 @@ func (f accountResourceFixture) put(path string) *httptest.ResponseRecorder {
 	return recorder
 }
 
+func (f accountResourceFixture) delete(path string) *httptest.ResponseRecorder {
+	req, err := http.NewRequest(http.MethodDelete, path, nil)
+	f.NoError(err)
+	recorder := httptest.NewRecorder()
+
+	f.server.ServeHTTP(recorder, req)
+
+	return recorder
+}
+
 func (f accountResourceFixture) createAccount(accountId account.Id, ownerId account.OwnerId) string {
 	req, err := http.NewRequest("POST", "/account/"+accountId.String()+"?owner="+ownerId.String(), nil)
 	f.NoError(err)
@@ -91,6 +101,16 @@ func (f accountResourceFixture) deposit(accountId account.Id, amount int64, txId
 
 func (f accountResourceFixture) withdraw(accountId account.Id, amount int64, txId uuid.UUID) {
 	res := f.put("/account/" + accountId.String() + "/withdraw?amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
+	f.Equal(http.StatusNoContent, res.Code)
+}
+
+func (f accountResourceFixture) transfer(sourceAccountId account.Id, targetAccountId account.Id, amount int64, txId uuid.UUID) {
+	res := f.put("/account/" + sourceAccountId.String() + "/transfer?targetAccount=" + targetAccountId.String() + "&amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
+	f.Equal(http.StatusNoContent, res.Code)
+}
+
+func (f accountResourceFixture) close(id account.Id) {
+	res := f.delete("/account/" + id.String())
 	f.Equal(http.StatusNoContent, res.Code)
 }
 
@@ -305,4 +325,76 @@ func TestDoNotAcceptNegativeWithdrawal(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 	assert.Equal(t, `{"message":"can not withdraw negative amount"}`, res.Body.String())
+}
+
+func TestTransferMoneyBetweenAccounts(t *testing.T) {
+	f := newFixture(t)
+	sourceAccountId := account.NewId()
+	f.createAccount(sourceAccountId, account.NewOwnerId())
+	f.deposit(sourceAccountId, 6, uuid.New())
+
+	targetAccountId := account.NewId()
+	f.createAccount(targetAccountId, account.NewOwnerId())
+	f.deposit(targetAccountId, 1, uuid.New())
+
+	f.transfer(sourceAccountId, targetAccountId, 2, uuid.New())
+
+	sourceSnapshot := f.queryAccount(sourceAccountId)
+	assert.Equal(t, int64(4), sourceSnapshot.Balance)
+
+	targetSnapshot := f.queryAccount(targetAccountId)
+	assert.Equal(t, int64(3), targetSnapshot.Balance)
+}
+
+func TestIdempotentMoneyTransfer(t *testing.T) {
+	f := newFixture(t)
+	sourceAccountId := account.NewId()
+	f.createAccount(sourceAccountId, account.NewOwnerId())
+	f.deposit(sourceAccountId, 100, uuid.New())
+
+	targetAccountId := account.NewId()
+	f.createAccount(targetAccountId, account.NewOwnerId())
+
+	txId := uuid.New()
+	f.transfer(sourceAccountId, targetAccountId, 60, txId)
+	f.transfer(sourceAccountId, targetAccountId, 60, txId)
+
+	sourceSnapshot := f.queryAccount(sourceAccountId)
+	assert.Equal(t, int64(40), sourceSnapshot.Balance)
+
+	targetSnapshot := f.queryAccount(targetAccountId)
+	assert.Equal(t, int64(60), targetSnapshot.Balance)
+}
+
+func Test404WhenTransferringToNonExistentAccount(t *testing.T) {
+	f := newFixture(t)
+	sourceAccountId := account.NewId()
+	f.createAccount(sourceAccountId, account.NewOwnerId())
+	f.deposit(sourceAccountId, 6, uuid.New())
+
+	txId := uuid.New()
+	res := f.put("/account/" + sourceAccountId.String() + "/transfer?targetAccount=" + account.NewId().String() + "&amount=2&transactionId=" + txId.String())
+	assert.Equal(t, http.StatusNotFound, res.Code)
+
+	sourceSnapshot := f.queryAccount(sourceAccountId)
+	assert.Equal(t, int64(6), sourceSnapshot.Balance)
+}
+
+func TestCloseAccount(t *testing.T) {
+	f := newFixture(t)
+	accountId := account.NewId()
+	f.createAccount(accountId, account.NewOwnerId())
+
+	f.close(accountId)
+
+	snapshot := f.queryAccount(accountId)
+	assert.False(t, snapshot.Open)
+}
+
+func Test404WhenClosingNonExistentAccount(t *testing.T) {
+	f := newFixture(t)
+
+	res := f.delete("/account/" + account.NewId().String())
+
+	assert.Equal(t, http.StatusNotFound, res.Code)
 }
