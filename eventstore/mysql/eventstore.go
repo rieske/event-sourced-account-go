@@ -3,6 +3,7 @@ package mysql
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -58,12 +59,12 @@ func (es *EventStore) sqlSelect(
 	if err != nil {
 		return err
 	}
-	defer CloseResource(stmt)
+	defer closeResource(stmt)
 	rows, err := query(stmt)
 	if err != nil {
 		return err
 	}
-	defer CloseResource(rows)
+	defer closeResource(rows)
 
 	if err := rowExtractor(rows); err != nil {
 		return err
@@ -140,85 +141,102 @@ func (es *EventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, er
 }
 
 func (es *EventStore) Append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
-	err := es.append(events, snapshots, txId)
-	return toConcurrentModification(err)
+	if err := es.append(events, snapshots, txId); err != nil {
+		return toConcurrentModification(err)
+	}
+	return nil
 }
 
 func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
-	aggregateIds := map[account.Id]bool{}
-	for _, event := range events {
-		aggregateIds[event.AggregateId] = true
-	}
+	return es.withTransaction(func(tx *sql.Tx) error {
+		if err := insertTransaction(tx, events, txId); err != nil {
+			return err
+		}
+		if err := insertEvents(tx, events, txId); err != nil {
+			return err
+		}
+		if err := updateSnapshots(tx, snapshots); err != nil {
+			return err
+		}
+		return nil
+	})
+}
 
+func (es *EventStore) withTransaction(doInTx func(tx *sql.Tx) error) error {
 	tx, err := es.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	insertTransactionsStmt, err := tx.Prepare(insertTransactionSql)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer CloseResource(insertTransactionsStmt)
-
-	for aggregateId, _ := range aggregateIds {
-		_, err := insertTransactionsStmt.Exec(aggregateId.UUID[:], txId[:])
-		if err != nil {
-			tx.Rollback()
-			return err
+	if err := doInTx(tx); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("error while rolling back tx %v, original error %v", rollbackErr, err)
 		}
-	}
-
-	insertEventsStmt, err := tx.Prepare(appendEventSql)
-	if err != nil {
-		tx.Rollback()
 		return err
-	}
-	defer CloseResource(insertEventsStmt)
-
-	for _, event := range events {
-		_, err := insertEventsStmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	deleteSnapshotsStmt, err := tx.Prepare(removeSnapshotSql)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer CloseResource(deleteSnapshotsStmt)
-	insertSnapshotsStmt, err := tx.Prepare(storeSnapshotSql)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer CloseResource(insertSnapshotsStmt)
-	for aggregateId, snapshot := range snapshots {
-		_, err := deleteSnapshotsStmt.Exec(aggregateId.UUID[:])
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		_, err = insertSnapshotsStmt.Exec(snapshot.AggregateId.UUID[:], snapshot.Seq, snapshot.EventType, snapshot.Payload)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
 	}
 
 	return tx.Commit()
 }
 
-func toConcurrentModification(err error) error {
-	if err == nil {
-		return nil
+func insertTransaction(tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
+	insertTransactionsStmt, err := tx.Prepare(insertTransactionSql)
+	if err != nil {
+		return err
 	}
-	if strings.HasPrefix(err.Error(), "Error 1062: Duplicate entry") &&
-		strings.HasSuffix(err.Error(), "for key 'PRIMARY'") {
+	defer closeResource(insertTransactionsStmt)
+
+	aggregateIds := map[account.Id]bool{}
+	for _, event := range events {
+		aggregateIds[event.AggregateId] = true
+	}
+	for aggregateId := range aggregateIds {
+		if _, err := insertTransactionsStmt.Exec(aggregateId.UUID[:], txId[:]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func insertEvents(tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
+	insertEventsStmt, err := tx.Prepare(appendEventSql)
+	if err != nil {
+		return err
+	}
+	defer closeResource(insertEventsStmt)
+
+	for _, event := range events {
+		if _, err := insertEventsStmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func updateSnapshots(tx *sql.Tx, snapshots map[account.Id]eventstore.SerializedEvent) error {
+	deleteSnapshotsStmt, err := tx.Prepare(removeSnapshotSql)
+	if err != nil {
+		return err
+	}
+	defer closeResource(deleteSnapshotsStmt)
+
+	insertSnapshotsStmt, err := tx.Prepare(storeSnapshotSql)
+	if err != nil {
+		return err
+	}
+	defer closeResource(insertSnapshotsStmt)
+	for aggregateId, snapshot := range snapshots {
+		if _, err := deleteSnapshotsStmt.Exec(aggregateId.UUID[:]); err != nil {
+			return err
+		}
+		if _, err := insertSnapshotsStmt.Exec(snapshot.AggregateId.UUID[:], snapshot.Seq, snapshot.EventType, snapshot.Payload); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func toConcurrentModification(err error) error {
+	if strings.HasPrefix(err.Error(), "Error 1062: Duplicate entry") && strings.HasSuffix(err.Error(), "for key 'PRIMARY'") {
 		return errors.New("concurrent modification error")
 	} else if err.Error() == "Error 1213: Deadlock found when trying to get lock; try restarting transaction" {
 		return errors.New("concurrent modification error")
@@ -227,8 +245,8 @@ func toConcurrentModification(err error) error {
 	}
 }
 
-func CloseResource(c io.Closer) {
+func closeResource(c io.Closer) {
 	if err := c.Close(); err != nil {
-		log.Println(err)
+		log.Printf("Could not close resource: %v\n", err)
 	}
 }
