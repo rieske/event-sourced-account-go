@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -63,7 +64,21 @@ func parseUUID(res http.ResponseWriter, uuidStr string) (uuid.UUID, bool) {
 	return id, true
 }
 
+func parseAmount(res http.ResponseWriter, amountStr string) (int64, bool) {
+	amount, err := strconv.ParseInt(amountStr, 10, 64)
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, fmt.Errorf("integer amount required, got '%s'", amountStr))
+		return amount, false
+	}
+	return amount, true
+}
+
 func respondWithError(res http.ResponseWriter, statusCode int, err error) {
 	res.WriteHeader(statusCode)
 	respondWithJson(res, []byte(fmt.Sprintf(`{"message":"%s"}`, err.Error())))
+}
+
+func unhandledError(res http.ResponseWriter, err error) {
+	log.Println(err)
+	respondWithError(res, http.StatusInternalServerError, err)
 }

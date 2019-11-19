@@ -3,13 +3,10 @@ package rest
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
-	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 )
 
 type accountResource struct {
@@ -26,12 +23,13 @@ func (r *accountResource) ServeHTTP(res http.ResponseWriter, req *http.Request) 
 	}
 
 	switch req.Method {
-	case "POST":
+	case http.MethodPost:
 		r.post(res, account.Id{accountId}, req.URL.Query())
-	case "GET":
+	case http.MethodGet:
 		r.get(res, account.Id{accountId})
-	case "PUT":
-		r.put(res, account.Id{accountId}, req.URL.Query())
+	case http.MethodPut:
+		head, req.URL.Path = shiftPath(req.URL.Path)
+		r.put(res, head, account.Id{accountId}, req.URL.Query())
 	default:
 		respondWithError(res, http.StatusMethodNotAllowed, errors.New("method not allowed"))
 	}
@@ -43,15 +41,8 @@ func (r *accountResource) post(res http.ResponseWriter, accountId account.Id, qu
 		return
 	}
 
-	switch err := r.accountService.OpenAccount(accountId, account.OwnerId{ownerId}); err {
-	case nil:
-		break
-	case account.Exists:
-		respondWithError(res, http.StatusConflict, err)
-		return
-	default:
-		log.Println(err)
-		respondWithError(res, http.StatusInternalServerError, err)
+	if err := r.accountService.OpenAccount(accountId, account.OwnerId{ownerId}); err != nil {
+		handleDomainError(res, err)
 		return
 	}
 
@@ -61,31 +52,33 @@ func (r *accountResource) post(res http.ResponseWriter, accountId account.Id, qu
 
 func (r *accountResource) get(res http.ResponseWriter, id account.Id) {
 	snapshot, err := r.accountService.QueryAccount(id)
-	switch err {
-	case nil:
-		break
-	case account.NotFound:
-		respondWithError(res, http.StatusNotFound, err)
-		return
-	default:
-		log.Println(err)
-		respondWithError(res, http.StatusInternalServerError, err)
+	if err != nil {
+		handleDomainError(res, err)
 		return
 	}
 
 	response, err := json.Marshal(snapshot)
 	if err != nil {
-		log.Println(err)
-		respondWithError(res, http.StatusInternalServerError, err)
+		unhandledError(res, err)
 		return
 	}
 	respondWithJson(res, response)
 }
 
-func (r *accountResource) put(res http.ResponseWriter, id account.Id, query url.Values) {
-	amount, err := strconv.ParseInt(query.Get("amount"), 10, 64)
-	if err != nil {
-		respondWithError(res, http.StatusBadRequest, fmt.Errorf("integer amount required, got '%s'", query.Get("amount")))
+func (r *accountResource) put(res http.ResponseWriter, action string, id account.Id, query url.Values) {
+	switch action {
+	case "deposit":
+		r.deposit(res, id, query)
+	case "withdraw":
+		r.withdraw(res, id, query)
+	default:
+		respondWithError(res, http.StatusBadRequest, errors.New("action not supported"))
+	}
+}
+
+func (r *accountResource) deposit(res http.ResponseWriter, id account.Id, query url.Values) {
+	amount, ok := parseAmount(res, query.Get("amount"))
+	if !ok {
 		return
 	}
 	txId, ok := parseUUID(res, query.Get("transactionId"))
@@ -93,13 +86,45 @@ func (r *accountResource) put(res http.ResponseWriter, id account.Id, query url.
 		return
 	}
 
-	switch err := r.accountService.Deposit(id, txId, amount); err {
-	case nil:
-		break
-	case account.NegativeDeposit:
-		respondWithError(res, http.StatusBadRequest, err)
+	if err := r.accountService.Deposit(id, txId, amount); err != nil {
+		handleDomainError(res, err)
 		return
 	}
 
 	res.WriteHeader(http.StatusNoContent)
+}
+
+func (r *accountResource) withdraw(res http.ResponseWriter, id account.Id, query url.Values) {
+	amount, ok := parseAmount(res, query.Get("amount"))
+	if !ok {
+		return
+	}
+	txId, ok := parseUUID(res, query.Get("transactionId"))
+	if !ok {
+		return
+	}
+
+	if err := r.accountService.Withdraw(id, txId, amount); err != nil {
+		handleDomainError(res, err)
+		return
+	}
+
+	res.WriteHeader(http.StatusNoContent)
+}
+
+func handleDomainError(res http.ResponseWriter, err error) {
+	switch err {
+	case account.Exists:
+		respondWithError(res, http.StatusConflict, err)
+	case account.NotFound:
+		respondWithError(res, http.StatusNotFound, err)
+	case account.NegativeDeposit:
+		respondWithError(res, http.StatusBadRequest, err)
+	case account.NegativeWithdrawal:
+		respondWithError(res, http.StatusBadRequest, err)
+	case account.InsufficientBalance:
+		respondWithError(res, http.StatusBadRequest, err)
+	default:
+		unhandledError(res, err)
+	}
 }

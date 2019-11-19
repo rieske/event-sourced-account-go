@@ -89,6 +89,11 @@ func (f accountResourceFixture) deposit(accountId account.Id, amount int64, txId
 	f.Equal(http.StatusNoContent, res.Code)
 }
 
+func (f accountResourceFixture) withdraw(accountId account.Id, amount int64, txId uuid.UUID) {
+	res := f.put("/account/" + accountId.String() + "/withdraw?amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
+	f.Equal(http.StatusNoContent, res.Code)
+}
+
 func TestOpenAccount(t *testing.T) {
 	f := newFixture(t)
 	accountId, ownerId := account.NewId(), account.NewOwnerId()
@@ -222,4 +227,82 @@ func TestDoNotAcceptNegativeDeposit(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 	assert.Equal(t, `{"message":"can not deposit negative amount"}`, res.Body.String())
+}
+
+func TestWithdrawMoney(t *testing.T) {
+	f := newFixture(t)
+	accountId := account.NewId()
+	f.createAccount(accountId, account.NewOwnerId())
+	f.deposit(accountId, 42, uuid.New())
+
+	f.withdraw(accountId, 11, uuid.New())
+
+	snapshot := f.queryAccount(accountId)
+	assert.Equal(t, int64(31), snapshot.Balance)
+}
+
+func TestIdempotentWithdrawals(t *testing.T) {
+	f := newFixture(t)
+	accountId := account.NewId()
+	f.createAccount(accountId, account.NewOwnerId())
+	f.deposit(accountId, 42, uuid.New())
+
+	txId := uuid.New()
+	f.withdraw(accountId, 30, txId)
+	f.withdraw(accountId, 30, txId)
+
+	snapshot := f.queryAccount(accountId)
+	assert.Equal(t, int64(12), snapshot.Balance)
+}
+
+func TestCanNotWithdrawWithInsufficientBalance(t *testing.T) {
+	f := newFixture(t)
+	accountId := account.NewId()
+	f.createAccount(accountId, account.NewOwnerId())
+	f.deposit(accountId, 42, uuid.New())
+
+	res := f.put("/account/" + accountId.String() + "/withdraw?amount=43&transactionId=" + uuid.New().String())
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+	assert.Equal(t, `{"message":"insufficient balance"}`, res.Body.String())
+}
+
+func TestDoNotAcceptFloatingPointWithdrawal(t *testing.T) {
+	f := newFixture(t)
+	accountId := account.NewId()
+	f.createAccount(accountId, account.NewOwnerId())
+	f.deposit(accountId, 42, uuid.New())
+
+	res := f.put("/account/" + accountId.String() + "/withdraw?amount=42.2&transactionId=" + uuid.New().String())
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+	assert.Equal(t, `{"message":"integer amount required, got '42.2'"}`, res.Body.String())
+}
+
+func TestDoNotAcceptNonNumericWithdrawal(t *testing.T) {
+	f := newFixture(t)
+	accountId := account.NewId()
+	f.createAccount(accountId, account.NewOwnerId())
+	f.deposit(accountId, 42, uuid.New())
+
+	res := f.put("/account/" + accountId.String() + "/withdraw?amount=banana&transactionId=" + uuid.New().String())
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+	assert.Equal(t, `{"message":"integer amount required, got 'banana'"}`, res.Body.String())
+}
+
+func TestDoNotAcceptNegativeWithdrawal(t *testing.T) {
+	f := newFixture(t)
+	accountId := account.NewId()
+	f.createAccount(accountId, account.NewOwnerId())
+	f.deposit(accountId, 42, uuid.New())
+
+	res := f.put("/account/" + accountId.String() + "/withdraw?amount=-1&transactionId=" + uuid.New().String())
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+	assert.Equal(t, `{"message":"can not withdraw negative amount"}`, res.Body.String())
 }
