@@ -21,7 +21,7 @@ func (r repository) newEventStream() *eventStream {
 	return newEventStream(r.store, r.snapshotFrequency)
 }
 
-func (r repository) query(id account.Id) (*account.Snapshot, error) {
+func (r repository) query(id account.ID) (*account.Snapshot, error) {
 	a := r.loadAggregate(id)
 	if a.err != nil {
 		return nil, a.err
@@ -30,7 +30,7 @@ func (r repository) query(id account.Id) (*account.Snapshot, error) {
 	return &snapshot, nil
 }
 
-func (r repository) create(id account.Id, tx transaction) error {
+func (r repository) create(id account.ID, tx transaction) error {
 	a, err := r.newAggregate(id)
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (r repository) create(id account.Id, tx transaction) error {
 	return a.transact(tx, uuid.New())
 }
 
-func (r repository) transact(id account.Id, txId uuid.UUID, tx transaction) error {
+func (r repository) transact(id account.ID, txId uuid.UUID, tx transaction) error {
 	a := r.loadAggregate(id)
 	transactionExists, err := r.store.TransactionExists(id, txId)
 	if err != nil {
@@ -50,7 +50,7 @@ func (r repository) transact(id account.Id, txId uuid.UUID, tx transaction) erro
 	return a.transact(tx, txId)
 }
 
-func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx biTransaction) error {
+func (r repository) biTransact(sourceId, targetId account.ID, txId uuid.UUID, tx biTransaction) error {
 	es := r.newEventStream()
 	source, err := es.replay(sourceId)
 	if err != nil {
@@ -75,7 +75,7 @@ func (r repository) biTransact(sourceId, targetId account.Id, txId uuid.UUID, tx
 	return es.commit(txId)
 }
 
-func (r repository) transactionExists(sourceId, targetId account.Id, txId uuid.UUID) (bool, error) {
+func (r repository) transactionExists(sourceId, targetId account.ID, txId uuid.UUID) (bool, error) {
 	sourceTxExists, err := r.store.TransactionExists(sourceId, txId)
 	if err != nil {
 		return false, err
@@ -87,7 +87,7 @@ func (r repository) transactionExists(sourceId, targetId account.Id, txId uuid.U
 	return sourceTxExists || targetTxExists, nil
 }
 
-func (r repository) aggregateExists(id account.Id) (bool, error) {
+func (r repository) aggregateExists(id account.ID) (bool, error) {
 	events, err := r.store.Events(id, 0)
 	if err != nil {
 		return false, err
@@ -95,7 +95,7 @@ func (r repository) aggregateExists(id account.Id) (bool, error) {
 	return len(events) != 0, nil
 }
 
-func (r repository) newAggregate(id account.Id) (*aggregate, error) {
+func (r repository) newAggregate(id account.ID) (*aggregate, error) {
 	a := aggregate{}
 	aggregateExists, err := r.aggregateExists(id)
 	if err != nil {
@@ -110,7 +110,7 @@ func (r repository) newAggregate(id account.Id) (*aggregate, error) {
 	return &a, nil
 }
 
-func (r repository) loadAggregate(id account.Id) *aggregate {
+func (r repository) loadAggregate(id account.ID) *aggregate {
 	a := aggregate{}
 	a.es = r.newEventStream()
 	a.acc, a.err = a.es.replay(id)

@@ -101,8 +101,8 @@ func (suite *ConsistencyTestSuite) withRetryOnConcurrentModification(wg *sync.Wa
 }
 
 func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
-	id, ownerId := account.NewId(), account.NewOwnerId()
-	err := suite.accountService.OpenAccount(id, ownerId)
+	id, ownerID := account.NewID(), account.NewOwnerID()
+	err := suite.accountService.OpenAccount(id, ownerID)
 	suite.NoError(err)
 
 	suite.doConcurrently(func(s *eventsourcing.AccountService) error {
@@ -116,14 +116,14 @@ func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
 
 func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
-	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
+	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
+	err := suite.accountService.OpenAccount(sourceAccountId, sourceownerID)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount*suite.concurrentUsers))
 	suite.NoError(err)
 
-	targetAccountId, targetOwnerId := account.NewId(), account.NewOwnerId()
-	err = suite.accountService.OpenAccount(targetAccountId, targetOwnerId)
+	targetAccountId, targetownerID := account.NewID(), account.NewOwnerID()
+	err = suite.accountService.OpenAccount(targetAccountId, targetownerID)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)
@@ -145,14 +145,14 @@ func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 
 func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfers() {
 	// given
-	sourceAccountId, sourceOwnerId := account.NewId(), account.NewOwnerId()
-	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerId)
+	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
+	err := suite.accountService.OpenAccount(sourceAccountId, sourceownerID)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)
 
-	targetAccountId, targetOwnerId := account.NewId(), account.NewOwnerId()
-	err = suite.accountService.OpenAccount(targetAccountId, targetOwnerId)
+	targetAccountId, targetownerID := account.NewID(), account.NewOwnerID()
+	err = suite.accountService.OpenAccount(targetAccountId, targetownerID)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)

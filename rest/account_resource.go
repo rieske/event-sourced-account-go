@@ -17,42 +17,42 @@ func (r *accountResource) ServeHTTP(res http.ResponseWriter, req *http.Request) 
 	var head string
 	head, req.URL.Path = shiftPath(req.URL.Path)
 
-	accountId, ok := parseUUID(res, head)
+	accountID, ok := parseUUID(res, head)
 	if !ok {
 		return
 	}
 
 	switch req.Method {
 	case http.MethodPost:
-		r.post(res, account.Id{accountId}, req.URL.Query())
+		r.post(res, account.ID{accountID}, req.URL.Query())
 	case http.MethodGet:
-		r.get(res, account.Id{accountId})
+		r.get(res, account.ID{accountID})
 	case http.MethodPut:
 		head, req.URL.Path = shiftPath(req.URL.Path)
-		r.put(res, head, account.Id{accountId}, req.URL.Query())
+		r.put(res, head, account.ID{accountID}, req.URL.Query())
 	case http.MethodDelete:
-		r.delete(res, account.Id{accountId})
+		r.delete(res, account.ID{accountID})
 	default:
 		respondWithError(res, http.StatusMethodNotAllowed, errors.New("method not allowed"))
 	}
 }
 
-func (r *accountResource) post(res http.ResponseWriter, accountId account.Id, query url.Values) {
-	ownerId, ok := parseUUID(res, query.Get("owner"))
+func (r *accountResource) post(res http.ResponseWriter, accountID account.ID, query url.Values) {
+	ownerID, ok := parseUUID(res, query.Get("owner"))
 	if !ok {
 		return
 	}
 
-	if err := r.accountService.OpenAccount(accountId, account.OwnerId{ownerId}); err != nil {
+	if err := r.accountService.OpenAccount(accountID, account.OwnerID{ownerID}); err != nil {
 		handleDomainError(res, err)
 		return
 	}
 
-	res.Header().Set("Location", "/account/"+accountId.String())
+	res.Header().Set("Location", "/account/"+accountID.String())
 	res.WriteHeader(http.StatusCreated)
 }
 
-func (r *accountResource) get(res http.ResponseWriter, id account.Id) {
+func (r *accountResource) get(res http.ResponseWriter, id account.ID) {
 	snapshot, err := r.accountService.QueryAccount(id)
 	if err != nil {
 		handleDomainError(res, err)
@@ -67,7 +67,7 @@ func (r *accountResource) get(res http.ResponseWriter, id account.Id) {
 	respondWithJson(res, response)
 }
 
-func (r *accountResource) put(res http.ResponseWriter, action string, id account.Id, query url.Values) {
+func (r *accountResource) put(res http.ResponseWriter, action string, id account.ID, query url.Values) {
 	switch action {
 	case "deposit":
 		r.deposit(res, id, query)
@@ -80,7 +80,7 @@ func (r *accountResource) put(res http.ResponseWriter, action string, id account
 	}
 }
 
-func (r *accountResource) deposit(res http.ResponseWriter, id account.Id, query url.Values) {
+func (r *accountResource) deposit(res http.ResponseWriter, id account.ID, query url.Values) {
 	amount, ok := parseAmount(res, query.Get("amount"))
 	if !ok {
 		return
@@ -98,7 +98,7 @@ func (r *accountResource) deposit(res http.ResponseWriter, id account.Id, query 
 	res.WriteHeader(http.StatusNoContent)
 }
 
-func (r *accountResource) withdraw(res http.ResponseWriter, id account.Id, query url.Values) {
+func (r *accountResource) withdraw(res http.ResponseWriter, id account.ID, query url.Values) {
 	amount, ok := parseAmount(res, query.Get("amount"))
 	if !ok {
 		return
@@ -116,7 +116,7 @@ func (r *accountResource) withdraw(res http.ResponseWriter, id account.Id, query
 	res.WriteHeader(http.StatusNoContent)
 }
 
-func (r *accountResource) delete(res http.ResponseWriter, id account.Id) {
+func (r *accountResource) delete(res http.ResponseWriter, id account.ID) {
 	if err := r.accountService.CloseAccount(id); err != nil {
 		handleDomainError(res, err)
 		return
@@ -125,7 +125,7 @@ func (r *accountResource) delete(res http.ResponseWriter, id account.Id) {
 	res.WriteHeader(http.StatusNoContent)
 }
 
-func (r *accountResource) transfer(res http.ResponseWriter, sourceAccountId account.Id, query url.Values) {
+func (r *accountResource) transfer(res http.ResponseWriter, sourceAccountId account.ID, query url.Values) {
 	targetAccountId, ok := parseUUID(res, query.Get("targetAccount"))
 	if !ok {
 		return
@@ -139,7 +139,7 @@ func (r *accountResource) transfer(res http.ResponseWriter, sourceAccountId acco
 		return
 	}
 
-	if err := r.accountService.Transfer(sourceAccountId, account.Id{targetAccountId}, txId, amount); err != nil {
+	if err := r.accountService.Transfer(sourceAccountId, account.ID{targetAccountId}, txId, amount); err != nil {
 		handleDomainError(res, err)
 		return
 	}

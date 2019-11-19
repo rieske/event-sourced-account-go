@@ -75,7 +75,7 @@ func (es *EventStore) sqlSelect(
 	return nil
 }
 
-func (es *EventStore) Events(id account.Id, version int) ([]eventstore.SerializedEvent, error) {
+func (es *EventStore) Events(id account.ID, version int) ([]eventstore.SerializedEvent, error) {
 	var events []eventstore.SerializedEvent
 
 	err := es.sqlSelect(
@@ -99,7 +99,7 @@ func (es *EventStore) Events(id account.Id, version int) ([]eventstore.Serialize
 	return events, err
 }
 
-func (es *EventStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, error) {
+func (es *EventStore) LoadSnapshot(id account.ID) (*eventstore.SerializedEvent, error) {
 	var snapshot *eventstore.SerializedEvent
 
 	err := es.sqlSelect(
@@ -123,7 +123,7 @@ func (es *EventStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, 
 	return snapshot, err
 }
 
-func (es *EventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
+func (es *EventStore) TransactionExists(id account.ID, txId uuid.UUID) (bool, error) {
 	transactionExists := false
 
 	err := es.sqlSelect(
@@ -140,14 +140,14 @@ func (es *EventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, er
 	return transactionExists, err
 }
 
-func (es *EventStore) Append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
+func (es *EventStore) Append(events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
 	if err := es.append(events, snapshots, txId); err != nil {
 		return toConcurrentModification(err)
 	}
 	return nil
 }
 
-func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[account.Id]eventstore.SerializedEvent, txId uuid.UUID) error {
+func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
 	return es.withTransaction(func(tx *sql.Tx) error {
 		if err := insertTransaction(tx, events, txId); err != nil {
 			return err
@@ -185,7 +185,7 @@ func insertTransaction(tx *sql.Tx, events []eventstore.SerializedEvent, txId uui
 	}
 	defer closeResource(insertTransactionsStmt)
 
-	aggregateIds := map[account.Id]bool{}
+	aggregateIds := map[account.ID]bool{}
 	for _, event := range events {
 		aggregateIds[event.AggregateId] = true
 	}
@@ -212,7 +212,7 @@ func insertEvents(tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUI
 	return nil
 }
 
-func updateSnapshots(tx *sql.Tx, snapshots map[account.Id]eventstore.SerializedEvent) error {
+func updateSnapshots(tx *sql.Tx, snapshots map[account.ID]eventstore.SerializedEvent) error {
 	deleteSnapshotsStmt, err := tx.Prepare(removeSnapshotSql)
 	if err != nil {
 		return err

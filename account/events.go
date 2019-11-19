@@ -5,8 +5,8 @@ type Event interface {
 }
 
 type AccountOpenedEvent struct {
-	AccountId Id
-	OwnerId   OwnerId
+	AccountID ID
+	OwnerID   OwnerID
 }
 
 func (e AccountOpenedEvent) Apply(account *Account) {

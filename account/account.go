@@ -4,52 +4,52 @@ import (
 	"github.com/google/uuid"
 )
 
-type Id struct {
+type ID struct {
 	uuid.UUID
 }
-type OwnerId struct {
+type OwnerID struct {
 	uuid.UUID
 }
 
 type EventAppender interface {
-	Append(e Event, a *Account, id Id)
+	Append(e Event, a *Account, id ID)
 }
 
 type Account struct {
 	eventAppender EventAppender
-	id            Id
-	ownerId       OwnerId
+	id            ID
+	ownerID       OwnerID
 	balance       int64
 	open          bool
 }
 
-func NewId() Id {
-	return Id{UUID: uuid.New()}
+func NewID() ID {
+	return ID{UUID: uuid.New()}
 }
 
-func NewOwnerId() OwnerId {
-	return OwnerId{UUID: uuid.New()}
+func NewOwnerID() OwnerID {
+	return OwnerID{UUID: uuid.New()}
 }
 
 func New(es EventAppender) *Account {
 	return &Account{eventAppender: es}
 }
 
-func (a Account) Id() Id {
+func (a Account) ID() ID {
 	return a.id
 }
 
 func (a Account) Snapshot() Snapshot {
-	return Snapshot{Id: a.id, OwnerId: a.ownerId, Balance: a.balance, Open: a.open}
+	return Snapshot{ID: a.id, OwnerID: a.ownerID, Balance: a.balance, Open: a.open}
 }
 
-func (a *Account) Open(accountId Id, ownerId OwnerId) error {
+func (a *Account) Open(accountID ID, ownerID OwnerID) error {
 	if a.open {
 		return AlreadyOpen
 	}
 
-	event := AccountOpenedEvent{AccountId: accountId, OwnerId: ownerId}
-	a.eventAppender.Append(event, a, accountId)
+	event := AccountOpenedEvent{AccountID: accountID, OwnerID: ownerID}
+	a.eventAppender.Append(event, a, accountID)
 	return nil
 }
 
@@ -99,15 +99,15 @@ func (a *Account) Close() error {
 }
 
 func (a *Account) applySnapshot(snapshot Snapshot) {
-	a.id = snapshot.Id
-	a.ownerId = snapshot.OwnerId
+	a.id = snapshot.ID
+	a.ownerID = snapshot.OwnerID
 	a.balance = snapshot.Balance
 	a.open = snapshot.Open
 }
 
 func (a *Account) applyAccountOpened(event AccountOpenedEvent) {
-	a.id = event.AccountId
-	a.ownerId = event.OwnerId
+	a.id = event.AccountID
+	a.ownerID = event.OwnerID
 	a.balance = 0
 	a.open = true
 }
@@ -125,8 +125,8 @@ func (a *Account) applyAccountClosed(event AccountClosedEvent) {
 }
 
 type Snapshot struct {
-	Id      Id
-	OwnerId OwnerId
+	ID      ID
+	OwnerID OwnerID
 	Balance int64
 	Open    bool
 }

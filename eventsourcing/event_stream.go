@@ -7,18 +7,18 @@ import (
 )
 
 type EventStore interface {
-	Events(id account.Id, version int) ([]eventstore.SequencedEvent, error)
-	Append(events []eventstore.SequencedEvent, snapshots map[account.Id]eventstore.SequencedEvent, txId uuid.UUID) error
-	LoadSnapshot(id account.Id) (eventstore.SequencedEvent, error)
-	TransactionExists(id account.Id, txId uuid.UUID) (bool, error)
+	Events(id account.ID, version int) ([]eventstore.SequencedEvent, error)
+	Append(events []eventstore.SequencedEvent, snapshots map[account.ID]eventstore.SequencedEvent, txId uuid.UUID) error
+	LoadSnapshot(id account.ID) (eventstore.SequencedEvent, error)
+	TransactionExists(id account.ID, txId uuid.UUID) (bool, error)
 }
 
 type eventStream struct {
 	eventStore           EventStore
 	snapshotFrequency    int
-	versions             map[account.Id]int
+	versions             map[account.ID]int
 	uncommittedEvents    []eventstore.SequencedEvent
-	uncommittedSnapshots map[account.Id]eventstore.SequencedEvent
+	uncommittedSnapshots map[account.ID]eventstore.SequencedEvent
 }
 
 func newEventStream(es EventStore, snapshotFrequency int) *eventStream {
@@ -28,12 +28,12 @@ func newEventStream(es EventStore, snapshotFrequency int) *eventStream {
 	return &eventStream{
 		eventStore:           es,
 		snapshotFrequency:    snapshotFrequency,
-		versions:             map[account.Id]int{},
-		uncommittedSnapshots: map[account.Id]eventstore.SequencedEvent{},
+		versions:             map[account.ID]int{},
+		uncommittedSnapshots: map[account.ID]eventstore.SequencedEvent{},
 	}
 }
 
-func (s *eventStream) applySnapshot(id account.Id) (*account.Account, int, error) {
+func (s *eventStream) applySnapshot(id account.ID) (*account.Account, int, error) {
 	a := account.New(s)
 	snapshot, err := s.eventStore.LoadSnapshot(id)
 	if err != nil {
@@ -46,7 +46,7 @@ func (s *eventStream) applySnapshot(id account.Id) (*account.Account, int, error
 	return a, 0, nil
 }
 
-func (s *eventStream) replay(id account.Id) (*account.Account, error) {
+func (s *eventStream) replay(id account.ID) (*account.Account, error) {
 	a, currentVersion, err := s.applySnapshot(id)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (s *eventStream) replay(id account.Id) (*account.Account, error) {
 	return a, nil
 }
 
-func (s *eventStream) Append(e account.Event, a *account.Account, id account.Id) {
+func (s *eventStream) Append(e account.Event, a *account.Account, id account.ID) {
 	e.Apply(a)
 	version := s.versions[id] + 1
 	s.versions[id] = version
@@ -85,6 +85,6 @@ func (s *eventStream) commit(txId uuid.UUID) error {
 		return err
 	}
 	s.uncommittedEvents = nil
-	s.uncommittedSnapshots = map[account.Id]eventstore.SequencedEvent{}
+	s.uncommittedSnapshots = map[account.ID]eventstore.SequencedEvent{}
 	return nil
 }
