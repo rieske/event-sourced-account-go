@@ -18,6 +18,18 @@ type EventStore struct {
 	db *sql.DB
 }
 
+const (
+	appendEventSql  = "INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, eventType, payload) VALUES(?, ?, ?, ?, ?)"
+	selectEventsSql = "SELECT sequenceNumber, eventType, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC"
+
+	removeSnapshotSql = "DELETE FROM event_store.Snapshot WHERE aggregateId = ?"
+	storeSnapshotSql  = "INSERT INTO event_store.Snapshot(aggregateId, sequenceNumber, eventType, payload) VALUES(?, ?, ?, ?)"
+	selectSnapshotSql = "SELECT sequenceNumber, eventType, payload FROM event_store.Snapshot WHERE aggregateId = ?"
+
+	insertTransactionSql = "INSERT INTO event_store.Transaction(aggregateId, transactionId) VALUES(?, ?)"
+	selectTransactionSql = "SELECT aggregateId FROM event_store.Transaction WHERE aggregateId = ? AND transactionId = ?"
+)
+
 func MigrateSchema(db *sql.DB, schemaLocation string) {
 	driver, err := mysql.WithInstance(db, &mysql.Config{})
 	if err != nil {
@@ -38,7 +50,7 @@ func NewEventStore(db *sql.DB) *EventStore {
 }
 
 func (es *EventStore) Events(id account.Id, version int) ([]eventstore.SerializedEvent, error) {
-	stmt, err := es.db.Prepare("SELECT sequenceNumber, eventType, payload FROM event_store.Event WHERE aggregateId = ? AND sequenceNumber > ? ORDER BY sequenceNumber ASC")
+	stmt, err := es.db.Prepare(selectEventsSql)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +77,7 @@ func (es *EventStore) Events(id account.Id, version int) ([]eventstore.Serialize
 }
 
 func (es *EventStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, error) {
-	stmt, err := es.db.Prepare("SELECT sequenceNumber, eventType, payload FROM event_store.Snapshot WHERE aggregateId = ?")
+	stmt, err := es.db.Prepare(selectSnapshotSql)
 	if err != nil {
 		return nil, err
 	}
@@ -85,14 +97,14 @@ func (es *EventStore) LoadSnapshot(id account.Id) (*eventstore.SerializedEvent, 
 		}
 		snapshot = &event
 	}
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return snapshot, err
 	}
 	return snapshot, nil
 }
 
 func (es *EventStore) TransactionExists(id account.Id, txId uuid.UUID) (bool, error) {
-	stmt, err := es.db.Prepare("SELECT aggregateId FROM event_store.Transaction WHERE aggregateId = ? AND transactionId = ?")
+	stmt, err := es.db.Prepare(selectTransactionSql)
 	if err != nil {
 		return false, err
 	}
@@ -126,7 +138,7 @@ func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[
 		return err
 	}
 
-	insertTransactionsStmt, err := tx.Prepare("INSERT INTO event_store.Transaction(aggregateId, transactionId) VALUES(?, ?)")
+	insertTransactionsStmt, err := tx.Prepare(insertTransactionSql)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -141,7 +153,7 @@ func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[
 		}
 	}
 
-	insertEventsStmt, err := tx.Prepare("INSERT INTO event_store.Event(aggregateId, sequenceNumber, transactionId, eventType, payload) VALUES(?, ?, ?, ?, ?)")
+	insertEventsStmt, err := tx.Prepare(appendEventSql)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -156,13 +168,13 @@ func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[
 		}
 	}
 
-	deleteSnapshotsStmt, err := tx.Prepare("DELETE FROM event_store.Snapshot WHERE aggregateId = ?")
+	deleteSnapshotsStmt, err := tx.Prepare(removeSnapshotSql)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 	defer CloseResource(deleteSnapshotsStmt)
-	insertSnapshotsStmt, err := tx.Prepare("INSERT INTO event_store.Snapshot(aggregateId, sequenceNumber, eventType, payload) VALUES(?, ?, ?, ?)")
+	insertSnapshotsStmt, err := tx.Prepare(storeSnapshotSql)
 	if err != nil {
 		tx.Rollback()
 		return err
