@@ -1,7 +1,6 @@
 package eventsourcing
 
 import (
-	"errors"
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 )
@@ -103,7 +102,7 @@ func (r repository) newAggregate(id account.Id) (*aggregate, error) {
 		return nil, err
 	}
 	if aggregateExists {
-		a.err = errors.New("account already exists")
+		a.err = account.Exists
 		return &a, nil
 	}
 	a.es = r.newEventStream()

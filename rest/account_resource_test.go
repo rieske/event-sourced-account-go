@@ -2,6 +2,7 @@ package rest_test
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/rieske/event-sourced-account-go/rest"
@@ -54,7 +55,7 @@ func TestRequireValidUUIDForOwnerId(t *testing.T) {
 	assert.Equal(t, `{"message":"Invalid UUID string: foobar"}`, recorder.Body.String())
 }
 
-/*func TestConflictOnAccountOpeningWhenAccountAlreadyExists(t *testing.T) {
+func TestConflictOnAccountOpeningWhenAccountAlreadyExists(t *testing.T) {
 	accountId := account.NewId()
 	createAccount(t, accountId, account.NewOwnerId())
 
@@ -65,7 +66,7 @@ func TestRequireValidUUIDForOwnerId(t *testing.T) {
 	server.ServeHTTP(recorder, req)
 
 	assert.Equal(t, http.StatusConflict, recorder.Code)
-}*/
+}
 
 func TestQueryAccount(t *testing.T) {
 	accountId, ownerId := account.NewId(), account.NewOwnerId()

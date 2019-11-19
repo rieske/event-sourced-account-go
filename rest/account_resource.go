@@ -65,12 +65,17 @@ func (r *accountResource) createAccount(res http.ResponseWriter, accountId accou
 		return
 	}
 
-	err := r.accountService.OpenAccount(accountId, account.OwnerId{ownerId})
-	if err != nil {
-		// TODO: need to distinguish domain and infra errors
+	switch err := r.accountService.OpenAccount(accountId, account.OwnerId{ownerId}); err {
+	case nil:
+		break
+	case account.Exists:
+		respondWithError(res, http.StatusConflict, err)
+		return
+	default:
 		respondWithError(res, http.StatusInternalServerError, err)
 		return
 	}
+
 	res.Header().Set("Location", "/account/"+accountId.String())
 	res.WriteHeader(http.StatusCreated)
 }

@@ -1,7 +1,6 @@
 package account
 
 import (
-	"errors"
 	"github.com/google/uuid"
 )
 
@@ -46,7 +45,7 @@ func (a Account) Snapshot() Snapshot {
 
 func (a *Account) Open(accountId Id, ownerId OwnerId) error {
 	if a.open {
-		return errors.New("account already open")
+		return AlreadyOpen
 	}
 
 	event := AccountOpenedEvent{AccountId: accountId, OwnerId: ownerId}
@@ -56,10 +55,10 @@ func (a *Account) Open(accountId Id, ownerId OwnerId) error {
 
 func (a *Account) Deposit(amount int64) error {
 	if amount < 0 {
-		return errors.New("can not deposit negative amount")
+		return NegativeDeposit
 	}
 	if !a.open {
-		return errors.New("account not open")
+		return NotOpen
 	}
 	if amount == 0 {
 		return nil
@@ -72,13 +71,13 @@ func (a *Account) Deposit(amount int64) error {
 
 func (a *Account) Withdraw(amount int64) error {
 	if amount < 0 {
-		return errors.New("can not withdraw negative amount")
+		return NegativeWithdrawal
 	}
 	if !a.open {
-		return errors.New("account not open")
+		return NotOpen
 	}
 	if amount > a.balance {
-		return errors.New("insufficient balance")
+		return InsufficientBalance
 	}
 	if amount == 0 {
 		return nil
@@ -91,7 +90,7 @@ func (a *Account) Withdraw(amount int64) error {
 
 func (a *Account) Close() error {
 	if a.balance != 0 {
-		return errors.New("balance outstanding")
+		return BalanceOutstanding
 	}
 
 	event := AccountClosedEvent{}
