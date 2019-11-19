@@ -71,6 +71,7 @@ func (r *accountResource) createAccount(res http.ResponseWriter, accountId accou
 		respondWithError(res, http.StatusConflict, err)
 		return
 	default:
+		log.Println(err)
 		respondWithError(res, http.StatusInternalServerError, err)
 		return
 	}
@@ -81,8 +82,14 @@ func (r *accountResource) createAccount(res http.ResponseWriter, accountId accou
 
 func (r *accountResource) getAccount(res http.ResponseWriter, id account.Id) {
 	snapshot, err := r.accountService.QueryAccount(id)
-	if err != nil {
-		// TODO: need to distinguish domain and infra errors
+	switch err {
+	case nil:
+		break
+	case account.NotFound:
+		respondWithError(res, http.StatusNotFound, err)
+		return
+	default:
+		log.Println(err)
 		respondWithError(res, http.StatusInternalServerError, err)
 		return
 	}

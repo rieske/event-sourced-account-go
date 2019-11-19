@@ -66,6 +66,7 @@ func TestConflictOnAccountOpeningWhenAccountAlreadyExists(t *testing.T) {
 	server.ServeHTTP(recorder, req)
 
 	assert.Equal(t, http.StatusConflict, recorder.Code)
+	assert.Equal(t, `{"message":"account already exists"}`, recorder.Body.String())
 }
 
 func TestQueryAccount(t *testing.T) {
@@ -86,4 +87,18 @@ func TestQueryAccount(t *testing.T) {
 			accountId.String(), ownerId.String()),
 		recorder.Body.String(),
 	)
+}
+
+func Test404WhenQueryingNonExistentAccount(t *testing.T) {
+	accountId := account.NewId()
+
+	req, err := http.NewRequest("GET", "/account/"+accountId.String(), nil)
+	assert.NoError(t, err)
+	recorder := httptest.NewRecorder()
+
+	server.ServeHTTP(recorder, req)
+
+	assert.Equal(t, http.StatusNotFound, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.Equal(t, `{"message":"account not found"}`, recorder.Body.String())
 }

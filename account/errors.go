@@ -8,6 +8,7 @@ func (e Error) Error() string {
 
 const (
 	Exists              Error = "account already exists"
+	NotFound            Error = "account not found"
 	AlreadyOpen         Error = "account already open"
 	NotOpen             Error = "account not open"
 	NegativeDeposit     Error = "can not deposit negative amount"

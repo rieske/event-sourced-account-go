@@ -1,7 +1,6 @@
 package eventsourcing
 
 import (
-	"errors"
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
@@ -63,7 +62,7 @@ func (s *eventStream) replay(id account.Id) (*account.Account, error) {
 	}
 
 	if currentVersion == 0 {
-		return nil, errors.New("aggregate not found")
+		return nil, account.NotFound
 	}
 
 	s.versions[id] = currentVersion

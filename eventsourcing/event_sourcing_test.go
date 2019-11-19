@@ -66,7 +66,7 @@ func (suite *EventsourcingTestSuite) TestCanNotDepositWhenNoAccountExists() {
 	id := account.NewId()
 	err := suite.service.Deposit(id, uuid.New(), 42)
 
-	suite.EqualError(err, "aggregate not found")
+	suite.EqualError(err, "account not found")
 }
 
 func (suite *EventsourcingTestSuite) TestEventSourcing_Deposit() {
@@ -195,7 +195,7 @@ func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithNonexistentTarget
 	err = suite.service.Transfer(sourceAccountId, targetAccountId, uuid.New(), 3)
 
 	// then
-	suite.EqualError(err, "aggregate not found")
+	suite.EqualError(err, "account not found")
 	suite.expectEvents(sourceAccountId, []eventstore.SequencedEvent{
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerId}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
