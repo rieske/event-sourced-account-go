@@ -131,7 +131,7 @@ func TestSqlStore_ConcurrentModificationErrorOnDuplicateEventSequence(t *testing
 		EventType:   10,
 	}}
 	err = store.Append(duplicateSequence, nil, uuid.New())
-	assert.EqualError(t, err, "concurrent modification error")
+	assert.Equal(t, err, account.ConcurrentModification)
 
 	events, err := store.Events(id, 0)
 

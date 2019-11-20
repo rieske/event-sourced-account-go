@@ -1,7 +1,6 @@
 package eventstore
 
 import (
-	"errors"
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"sync"
@@ -81,10 +80,10 @@ func (es *inmemoryStore) validateConsistency(events []SequencedEvent, txId uuid.
 			return err
 		}
 		if transactionExists {
-			return errors.New("concurrent modification error")
+			return account.ConcurrentModification
 		}
 		if e.Seq <= currentVersion {
-			return errors.New("concurrent modification error")
+			return account.ConcurrentModification
 		}
 		aggregateVersions[e.AggregateId] = e.Seq
 	}

@@ -186,6 +186,8 @@ func handleDomainError(res http.ResponseWriter, err error) {
 		respondWithError(res, http.StatusBadRequest, err)
 	case account.InsufficientBalance:
 		respondWithError(res, http.StatusBadRequest, err)
+	case account.ConcurrentModification:
+		res.WriteHeader(http.StatusConflict)
 	default:
 		unhandledError(res, err)
 	}

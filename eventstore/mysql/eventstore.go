@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
@@ -237,9 +236,9 @@ func updateSnapshots(tx *sql.Tx, snapshots map[account.ID]eventstore.SerializedE
 
 func toConcurrentModification(err error) error {
 	if strings.HasPrefix(err.Error(), "Error 1062: Duplicate entry") && strings.HasSuffix(err.Error(), "for key 'PRIMARY'") {
-		return errors.New("concurrent modification error")
+		return account.ConcurrentModification
 	} else if err.Error() == "Error 1213: Deadlock found when trying to get lock; try restarting transaction" {
-		return errors.New("concurrent modification error")
+		return account.ConcurrentModification
 	} else {
 		return err
 	}
