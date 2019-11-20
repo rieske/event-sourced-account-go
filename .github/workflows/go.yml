@@ -21,3 +21,6 @@ jobs:
 
       - name: Integration Test
         run: make integration-test
+
+      - name: Build docker image
+        run: make docker
