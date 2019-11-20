@@ -20,4 +20,4 @@ jobs:
         run: make
 
       - name: Integration Test
-        run: make integraton-test
+        run: make integration-test
