@@ -21,9 +21,7 @@ func TestMain(m *testing.M) {
 		mysql.MigrateSchema(db, "../../infrastructure/schema/mysql")
 		store = mysql.NewEventStore(db)
 
-		code := m.Run()
-
-		os.Exit(code)
+		os.Exit(m.Run())
 	})
 }
 

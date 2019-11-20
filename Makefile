@@ -15,6 +15,8 @@ test:
 	$(GOTEST)
 integration-test:
 	$(GOTEST) -tags=integration
+e2e-test: build
+	$(GOTEST) -tags=e2e
 docker: build
 	docker build -t $(DOCKER_TAG) .
 docker-run: docker
