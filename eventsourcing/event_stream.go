@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
+	"log"
 )
 
 type EventStore interface {
@@ -23,7 +24,7 @@ type eventStream struct {
 
 func newEventStream(es EventStore, snapshotFrequency int) *eventStream {
 	if snapshotFrequency < 0 {
-		panic("snapshot frequency can not be negative")
+		log.Panic("snapshot frequency can not be negative")
 	}
 	return &eventStream{
 		eventStore:           es,

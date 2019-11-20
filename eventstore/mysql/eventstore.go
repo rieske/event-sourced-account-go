@@ -41,7 +41,7 @@ func MigrateSchema(db *sql.DB, schemaLocation string) {
 		log.Panic(err)
 	}
 
-	if err := m.Steps(3); err != nil {
+	if err := m.Migrate(3); err != nil && err != migrate.ErrNoChange {
 		log.Panic(err)
 	}
 }

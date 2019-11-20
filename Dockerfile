@@ -2,5 +2,6 @@ FROM scratch
 
 CMD ["/app"]
 
-ADD /bin/account-app /app
+ADD infrastructure/schema/ infrastructure/schema/
+ADD bin/account-app /app
 

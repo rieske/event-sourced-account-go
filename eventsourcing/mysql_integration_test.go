@@ -15,7 +15,7 @@ import (
 
 func TestMysqlIntegration(t *testing.T) {
 	test.WithMysqlDatabase(func(db *sql.DB) {
-		mysql.MigrateSchema(db, "../eventstore/mysql/schema")
+		mysql.MigrateSchema(db, "../infrastructure/schema/mysql")
 		sqlStore := mysql.NewEventStore(db)
 		store := eventstore.NewSerializingEventStore(sqlStore, serialization.NewJsonEventSerializer())
 
