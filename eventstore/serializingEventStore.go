@@ -41,7 +41,7 @@ func (s serializingEventStore) Events(id account.ID, version int) ([]SequencedEv
 	if err != nil {
 		return nil, err
 	}
-	var events []SequencedEvent
+	events := []SequencedEvent{}
 	for _, serializedEvent := range serializedEvents {
 		event, err := s.serializer.DeserializeEvent(serializedEvent)
 		if err != nil {

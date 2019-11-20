@@ -26,7 +26,8 @@ func (r *accountResource) ServeHTTP(res http.ResponseWriter, req *http.Request) 
 	case http.MethodPost:
 		r.post(res, account.ID{accountID}, req.URL.Query())
 	case http.MethodGet:
-		r.get(res, account.ID{accountID})
+		head, req.URL.Path = shiftPath(req.URL.Path)
+		r.get(res, head, account.ID{accountID})
 	case http.MethodPut:
 		head, req.URL.Path = shiftPath(req.URL.Path)
 		r.put(res, head, account.ID{accountID}, req.URL.Query())
@@ -52,7 +53,31 @@ func (r *accountResource) post(res http.ResponseWriter, accountID account.ID, qu
 	res.WriteHeader(http.StatusCreated)
 }
 
-func (r *accountResource) get(res http.ResponseWriter, id account.ID) {
+func (r *accountResource) get(res http.ResponseWriter, action string, id account.ID) {
+	switch action {
+	case "":
+		r.queryAccount(res, id)
+	case "events":
+		r.queryEvents(res, id)
+	default:
+		respondWithError(res, http.StatusBadRequest, errors.New("action not supported"))
+	}
+}
+
+func (r *accountResource) put(res http.ResponseWriter, action string, id account.ID, query url.Values) {
+	switch action {
+	case "deposit":
+		r.deposit(res, id, query)
+	case "withdraw":
+		r.withdraw(res, id, query)
+	case "transfer":
+		r.transfer(res, id, query)
+	default:
+		respondWithError(res, http.StatusBadRequest, errors.New("action not supported"))
+	}
+}
+
+func (r *accountResource) queryAccount(res http.ResponseWriter, id account.ID) {
 	snapshot, err := r.accountService.QueryAccount(id)
 	if err != nil {
 		handleDomainError(res, err)
@@ -67,17 +92,19 @@ func (r *accountResource) get(res http.ResponseWriter, id account.ID) {
 	respondWithJson(res, response)
 }
 
-func (r *accountResource) put(res http.ResponseWriter, action string, id account.ID, query url.Values) {
-	switch action {
-	case "deposit":
-		r.deposit(res, id, query)
-	case "withdraw":
-		r.withdraw(res, id, query)
-	case "transfer":
-		r.transfer(res, id, query)
-	default:
-		respondWithError(res, http.StatusBadRequest, errors.New("action not supported"))
+func (r *accountResource) queryEvents(res http.ResponseWriter, id account.ID) {
+	events, err := r.accountService.Events(id)
+	if err != nil {
+		handleDomainError(res, err)
+		return
 	}
+
+	response, err := json.Marshal(events)
+	if err != nil {
+		unhandledError(res, err)
+		return
+	}
+	respondWithJson(res, response)
 }
 
 func (r *accountResource) deposit(res http.ResponseWriter, id account.ID, query url.Values) {

@@ -398,3 +398,32 @@ func Test404WhenClosingNonExistentAccount(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, res.Code)
 }
+
+func TestQueryAccountEvents(t *testing.T) {
+	f := newFixture(t)
+	accountID, ownerID := account.NewID(), account.NewOwnerID()
+	f.createAccount(accountID, ownerID)
+	f.deposit(accountID, 5, uuid.New())
+	f.deposit(accountID, 12, uuid.New())
+
+	res := f.get("/account/" + accountID.String() + "/events")
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	assert.Equal(
+		t,
+		fmt.Sprintf(
+			`[{"AggregateId":"%s","Seq":1,"Event":{"AccountID":"%s","OwnerID":"%s"}},{"AggregateId":"%s","Seq":2,"Event":{"AmountDeposited":5,"Balance":5}},{"AggregateId":"%s","Seq":3,"Event":{"AmountDeposited":12,"Balance":17}}]`,
+			accountID, accountID, ownerID, accountID, accountID,
+		),
+		res.Body.String(),
+	)
+}
+
+func TestQueryNonExistingAccountNoEvents(t *testing.T) {
+	f := newFixture(t)
+
+	res := f.get("/account/" + account.NewID().String() + "/events")
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	assert.Equal(t, `[]`, res.Body.String())
+}

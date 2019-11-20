@@ -200,7 +200,7 @@ func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithNonexistentTarget
 		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceownerID}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
-	suite.expectEvents(targetAccountId, nil)
+	suite.expectEvents(targetAccountId, []eventstore.SequencedEvent{})
 }
 
 func (suite *EventsourcingTestSuite) TestDepositIdempotency() {
