@@ -17,6 +17,8 @@ services:
       - 8080
     environment:
       MYSQL_URL: test:test@tcp(database:3306)/event_store
+    depends_on:
+      - database
 
   account-2:
     build: .
@@ -24,6 +26,8 @@ services:
       - 8080
     environment:
       MYSQL_URL: test:test@tcp(database:3306)/event_store
+    depends_on:
+      - database
 
   database:
     image: mysql

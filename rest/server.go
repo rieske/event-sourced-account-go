@@ -26,12 +26,15 @@ func NewRestServer(store eventsourcing.EventStore, snapshottingFrequency int) *S
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	var head string
 	head, req.URL.Path = shiftPath(req.URL.Path)
-	if head == "account" {
+	switch head {
+	case "account":
 		s.accountResource.ServeHTTP(res, req)
-		return
+	case "ping":
+		res.WriteHeader(http.StatusOK)
+		writeBody(res, []byte("pong"))
+	default:
+		http.NotFound(res, req)
 	}
-
-	http.Error(res, "Not Found", http.StatusNotFound)
 }
 
 // shiftPath splits off the first component of p, which will be cleaned of
@@ -48,7 +51,11 @@ func shiftPath(p string) (head, tail string) {
 
 func respondWithJson(res http.ResponseWriter, json []byte) {
 	res.Header().Set("Content-Type", "application/json")
-	if _, err := res.Write(json); err != nil {
+	writeBody(res, json)
+}
+
+func writeBody(res http.ResponseWriter, body []byte) {
+	if _, err := res.Write(body); err != nil {
 		log.Println(err)
 		http.Error(res, "Could not write response", http.StatusInternalServerError)
 	}
