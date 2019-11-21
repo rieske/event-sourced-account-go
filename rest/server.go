@@ -79,7 +79,8 @@ func NewRestServer(store eventsourcing.EventStore, snapshottingFrequency int) *S
 }
 
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	log.Printf("%v %v", req.Method, req.URL.Path)
+	correlationId := uuid.New().String()
+	log.Printf("[%v] %v %v", correlationId, req.Method, req.URL.Path)
 
 	var head string
 	r := notFoundResponse()
@@ -101,7 +102,7 @@ func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(r.status)
 	writeBody(res, r.body)
 
-	log.Printf("%v", r.status)
+	log.Printf("[%v] %v", correlationId, r.status)
 }
 
 // shiftPath splits off the first component of p, which will be cleaned of
