@@ -1,6 +1,6 @@
 ## Event Sourced Account
 
-[![Actions Status](https://github.com/rieske/event-sourced-account-go/workflows/build/badge.svg)](https://github.com/rieske/event-sourced-account-go/actions)
+[![Actions Status](https://github.com/rieske/event-sourced-account-go/workflows/go/badge.svg)](https://github.com/rieske/event-sourced-account-go/actions)
 
 Event sourced Account implementation in go.
 
