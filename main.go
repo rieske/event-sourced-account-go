@@ -7,6 +7,7 @@ import (
 	"github.com/rieske/event-sourced-account-go/eventstore/mysql"
 	"github.com/rieske/event-sourced-account-go/rest"
 	"github.com/rieske/event-sourced-account-go/serialization"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ func main() {
 	var eventStore eventsourcing.EventStore
 	if mysqlURL, ok := os.LookupEnv("MYSQL_URL"); ok {
 		db, err := sql.Open("mysql", mysqlURL)
+		defer closeResource(db)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -45,6 +47,13 @@ func waitForDBConnection(db *sql.DB) {
 		}
 		time.Sleep(time.Second * 1)
 	}
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func closeResource(c io.Closer) {
+	err := c.Close()
 	if err != nil {
 		log.Panic(err)
 	}

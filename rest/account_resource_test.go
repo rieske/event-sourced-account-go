@@ -67,7 +67,7 @@ func (f accountResourceFixture) delete(path string) *httptest.ResponseRecorder {
 }
 
 func (f accountResourceFixture) createAccount(accountID account.ID, ownerID account.OwnerID) string {
-	req, err := http.NewRequest("POST", "/account/"+accountID.String()+"?owner="+ownerID.String(), nil)
+	req, err := http.NewRequest("POST", "/api/account/"+accountID.String()+"?owner="+ownerID.String(), nil)
 	f.NoError(err)
 	recorder := httptest.NewRecorder()
 
@@ -79,7 +79,7 @@ func (f accountResourceFixture) createAccount(accountID account.ID, ownerID acco
 }
 
 func (f accountResourceFixture) queryAccount(accountID account.ID) account.Snapshot {
-	req, err := http.NewRequest("GET", "/account/"+accountID.String(), nil)
+	req, err := http.NewRequest("GET", "/api/account/"+accountID.String(), nil)
 	f.NoError(err)
 	recorder := httptest.NewRecorder()
 
@@ -95,22 +95,22 @@ func (f accountResourceFixture) queryAccount(accountID account.ID) account.Snaps
 }
 
 func (f accountResourceFixture) deposit(accountID account.ID, amount int64, txId uuid.UUID) {
-	res := f.put("/account/" + accountID.String() + "/deposit?amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
+	res := f.put("/api/account/" + accountID.String() + "/deposit?amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
 	f.Equal(http.StatusNoContent, res.Code)
 }
 
 func (f accountResourceFixture) withdraw(accountID account.ID, amount int64, txId uuid.UUID) {
-	res := f.put("/account/" + accountID.String() + "/withdraw?amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
+	res := f.put("/api/account/" + accountID.String() + "/withdraw?amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
 	f.Equal(http.StatusNoContent, res.Code)
 }
 
 func (f accountResourceFixture) transfer(sourceaccountID account.ID, targetaccountID account.ID, amount int64, txId uuid.UUID) {
-	res := f.put("/account/" + sourceaccountID.String() + "/transfer?targetAccount=" + targetaccountID.String() + "&amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
+	res := f.put("/api/account/" + sourceaccountID.String() + "/transfer?targetAccount=" + targetaccountID.String() + "&amount=" + strconv.FormatInt(amount, 10) + "&transactionId=" + txId.String())
 	f.Equal(http.StatusNoContent, res.Code)
 }
 
 func (f accountResourceFixture) close(id account.ID) {
-	res := f.delete("/account/" + id.String())
+	res := f.delete("/api/account/" + id.String())
 	f.Equal(http.StatusNoContent, res.Code)
 }
 
@@ -123,7 +123,7 @@ func TestOpenAccount(t *testing.T) {
 func TestRequireValidUUIDForaccountID(t *testing.T) {
 	f := newFixture(t)
 
-	res := f.post("/account/foobar?owner=" + account.NewOwnerID().String())
+	res := f.post("/api/account/foobar?owner=" + account.NewOwnerID().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, `{"message":"Invalid UUID string: foobar"}`, res.Body.String())
@@ -132,7 +132,7 @@ func TestRequireValidUUIDForaccountID(t *testing.T) {
 func TestRequireValidUUIDForownerID(t *testing.T) {
 	f := newFixture(t)
 
-	res := f.post("/account/" + account.NewID().String() + "?owner=foobar")
+	res := f.post("/api/account/" + account.NewID().String() + "?owner=foobar")
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, `{"message":"Invalid UUID string: foobar"}`, res.Body.String())
@@ -143,7 +143,7 @@ func TestConflictOnAccountOpeningWhenAccountAlreadyExists(t *testing.T) {
 	accountID := account.NewID()
 	f.createAccount(accountID, account.NewOwnerID())
 
-	res := f.post("/account/" + accountID.String() + "?owner=" + uuid.New().String())
+	res := f.post("/api/account/" + accountID.String() + "?owner=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusConflict, res.Code)
 	assert.Equal(t, `{"message":"account already exists"}`, res.Body.String())
@@ -170,7 +170,7 @@ func Test404WhenQueryingNonExistentAccount(t *testing.T) {
 	f := newFixture(t)
 	accountID := account.NewID()
 
-	res := f.get("/account/" + accountID.String())
+	res := f.get("/api/account/" + accountID.String())
 
 	assert.Equal(t, http.StatusNotFound, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -218,7 +218,7 @@ func TestDoNotAcceptFloatingPointDeposit(t *testing.T) {
 	accountID := account.NewID()
 	f.createAccount(accountID, account.NewOwnerID())
 
-	res := f.put("/account/" + accountID.String() + "/deposit?amount=42.4&transactionId=" + uuid.New().String())
+	res := f.put("/api/account/" + accountID.String() + "/deposit?amount=42.4&transactionId=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -230,7 +230,7 @@ func TestDoNotAcceptNonNumericDeposit(t *testing.T) {
 	accountID := account.NewID()
 	f.createAccount(accountID, account.NewOwnerID())
 
-	res := f.put("/account/" + accountID.String() + "/deposit?amount=banana&transactionId=" + uuid.New().String())
+	res := f.put("/api/account/" + accountID.String() + "/deposit?amount=banana&transactionId=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -242,7 +242,7 @@ func TestDoNotAcceptNegativeDeposit(t *testing.T) {
 	accountID := account.NewID()
 	f.createAccount(accountID, account.NewOwnerID())
 
-	res := f.put("/account/" + accountID.String() + "/deposit?amount=-1&transactionId=" + uuid.New().String())
+	res := f.put("/api/account/" + accountID.String() + "/deposit?amount=-1&transactionId=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -281,7 +281,7 @@ func TestCanNotWithdrawWithInsufficientBalance(t *testing.T) {
 	f.createAccount(accountID, account.NewOwnerID())
 	f.deposit(accountID, 42, uuid.New())
 
-	res := f.put("/account/" + accountID.String() + "/withdraw?amount=43&transactionId=" + uuid.New().String())
+	res := f.put("/api/account/" + accountID.String() + "/withdraw?amount=43&transactionId=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -294,7 +294,7 @@ func TestDoNotAcceptFloatingPointWithdrawal(t *testing.T) {
 	f.createAccount(accountID, account.NewOwnerID())
 	f.deposit(accountID, 42, uuid.New())
 
-	res := f.put("/account/" + accountID.String() + "/withdraw?amount=42.2&transactionId=" + uuid.New().String())
+	res := f.put("/api/account/" + accountID.String() + "/withdraw?amount=42.2&transactionId=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -307,7 +307,7 @@ func TestDoNotAcceptNonNumericWithdrawal(t *testing.T) {
 	f.createAccount(accountID, account.NewOwnerID())
 	f.deposit(accountID, 42, uuid.New())
 
-	res := f.put("/account/" + accountID.String() + "/withdraw?amount=banana&transactionId=" + uuid.New().String())
+	res := f.put("/api/account/" + accountID.String() + "/withdraw?amount=banana&transactionId=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -320,7 +320,7 @@ func TestDoNotAcceptNegativeWithdrawal(t *testing.T) {
 	f.createAccount(accountID, account.NewOwnerID())
 	f.deposit(accountID, 42, uuid.New())
 
-	res := f.put("/account/" + accountID.String() + "/withdraw?amount=-1&transactionId=" + uuid.New().String())
+	res := f.put("/api/account/" + accountID.String() + "/withdraw?amount=-1&transactionId=" + uuid.New().String())
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -373,7 +373,7 @@ func Test404WhenTransferringToNonExistentAccount(t *testing.T) {
 	f.deposit(sourceaccountID, 6, uuid.New())
 
 	txId := uuid.New()
-	res := f.put("/account/" + sourceaccountID.String() + "/transfer?targetAccount=" + account.NewID().String() + "&amount=2&transactionId=" + txId.String())
+	res := f.put("/api/account/" + sourceaccountID.String() + "/transfer?targetAccount=" + account.NewID().String() + "&amount=2&transactionId=" + txId.String())
 	assert.Equal(t, http.StatusNotFound, res.Code)
 
 	sourceSnapshot := f.queryAccount(sourceaccountID)
@@ -394,7 +394,7 @@ func TestCloseAccount(t *testing.T) {
 func Test404WhenClosingNonExistentAccount(t *testing.T) {
 	f := newFixture(t)
 
-	res := f.delete("/account/" + account.NewID().String())
+	res := f.delete("/api/account/" + account.NewID().String())
 
 	assert.Equal(t, http.StatusNotFound, res.Code)
 }
@@ -406,7 +406,7 @@ func TestQueryAccountEvents(t *testing.T) {
 	f.deposit(accountID, 5, uuid.New())
 	f.deposit(accountID, 12, uuid.New())
 
-	res := f.get("/account/" + accountID.String() + "/events")
+	res := f.get("/api/account/" + accountID.String() + "/events")
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	assert.Equal(
@@ -422,7 +422,7 @@ func TestQueryAccountEvents(t *testing.T) {
 func TestQueryNonExistingAccountNoEvents(t *testing.T) {
 	f := newFixture(t)
 
-	res := f.get("/account/" + account.NewID().String() + "/events")
+	res := f.get("/api/account/" + account.NewID().String() + "/events")
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	assert.Equal(t, `[]`, res.Body.String())

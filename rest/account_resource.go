@@ -49,7 +49,7 @@ func (r *accountResource) post(res http.ResponseWriter, accountID account.ID, qu
 		return
 	}
 
-	res.Header().Set("Location", "/account/"+accountID.String())
+	res.Header().Set("Location", "/api/account/"+accountID.String())
 	res.WriteHeader(http.StatusCreated)
 }
 

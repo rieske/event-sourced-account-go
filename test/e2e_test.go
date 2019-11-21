@@ -73,7 +73,7 @@ func TestPing(t *testing.T) {
 func TestCreateAndQueryAccount(t *testing.T) {
 	accountID, ownerID := uuid.New().String(), uuid.New().String()
 
-	res, err := http.Post(serviceUrl+"/account/"+accountID+"?owner="+ownerID, "", nil)
+	res, err := http.Post(serviceUrl+"/api/account/"+accountID+"?owner="+ownerID, "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 
@@ -94,7 +94,7 @@ func TestCreateAndQueryAccount(t *testing.T) {
 
 func TestConsistencyInDistributedEnvironmentUnderLoad(t *testing.T) {
 	accountID, ownerID := uuid.New().String(), uuid.New().String()
-	res, err := http.Post(serviceUrl+"/account/"+accountID+"?owner="+ownerID, "", nil)
+	res, err := http.Post(serviceUrl+"/api/account/"+accountID+"?owner="+ownerID, "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 	accountLocation, err := res.Location()
@@ -122,7 +122,7 @@ func depositConcurrently(t *testing.T, operationCount, concurrentUsers int, acco
 		wg.Add(concurrentUsers)
 		for j := 0; j < concurrentUsers; j++ {
 			go withRetryOnConcurrentModification(t, &wg, i, j, func() int {
-				req, err := http.NewRequest(http.MethodPut, serviceUrl+"/account/"+accountID+"/deposit?amount=1&transactionId="+txId, nil)
+				req, err := http.NewRequest(http.MethodPut, serviceUrl+"/api/account/"+accountID+"/deposit?amount=1&transactionId="+txId, nil)
 				require.NoError(t, err)
 				client := &http.Client{}
 				res, err := client.Do(req)

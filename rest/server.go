@@ -27,8 +27,14 @@ func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	var head string
 	head, req.URL.Path = shiftPath(req.URL.Path)
 	switch head {
-	case "account":
-		s.accountResource.ServeHTTP(res, req)
+	case "api":
+		head, req.URL.Path = shiftPath(req.URL.Path)
+		switch head {
+		case "account":
+			s.accountResource.ServeHTTP(res, req)
+		default:
+			http.NotFound(res, req)
+		}
 	case "ping":
 		res.WriteHeader(http.StatusOK)
 		writeBody(res, []byte("pong"))

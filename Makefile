@@ -8,7 +8,7 @@ BINARY_NAME=bin/account-app
 DOCKER_TAG=account:snapshot
 
 all: build test
-full: build test integration-test docker
+full: build test integration-test e2e-test
 build:
 	$(GOBUILD) -o $(BINARY_NAME) -v
 test:
