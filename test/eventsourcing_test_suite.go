@@ -110,13 +110,13 @@ func (suite *EventsourcingTestSuite) TestEventSourcing_Withdraw() {
 
 func (suite *EventsourcingTestSuite) TestTransferMoney() {
 	// given
-	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
-	targetAccountId, targetownerID := account.NewID(), account.NewOwnerID()
+	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
+	targetAccountId, targetOwnerID := account.NewID(), account.NewOwnerID()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
-			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceownerID}},
+			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerID}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
-			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetownerID}},
+			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerID}},
 		},
 		map[account.ID]eventstore.SequencedEvent{},
 		uuid.New(),
@@ -129,25 +129,25 @@ func (suite *EventsourcingTestSuite) TestTransferMoney() {
 	// then
 	suite.NoError(err)
 	suite.expectEvents(sourceAccountId, []eventstore.SequencedEvent{
-		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceownerID}},
+		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerID}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		{sourceAccountId, 3, account.MoneyWithdrawnEvent{2, 8}},
 	})
 	suite.expectEvents(targetAccountId, []eventstore.SequencedEvent{
-		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetownerID}},
+		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerID}},
 		{targetAccountId, 2, account.MoneyDepositedEvent{2, 2}},
 	})
 }
 
 func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithInsufficientBalance() {
 	// given
-	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
-	targetAccountId, targetownerID := account.NewID(), account.NewOwnerID()
+	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
+	targetAccountId, targetOwnerID := account.NewID(), account.NewOwnerID()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
-			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceownerID}},
+			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerID}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
-			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetownerID}},
+			{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerID}},
 		},
 		map[account.ID]eventstore.SequencedEvent{},
 		uuid.New(),
@@ -160,20 +160,20 @@ func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithInsufficientBalan
 	// then
 	suite.EqualError(err, "insufficient balance")
 	suite.expectEvents(sourceAccountId, []eventstore.SequencedEvent{
-		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceownerID}},
+		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerID}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
 	suite.expectEvents(targetAccountId, []eventstore.SequencedEvent{
-		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetownerID}},
+		{targetAccountId, 1, account.AccountOpenedEvent{targetAccountId, targetOwnerID}},
 	})
 }
 
 func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithNonexistentTargetAccount() {
 	// given
-	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
+	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
 	err := suite.store.Append(
 		[]eventstore.SequencedEvent{
-			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceownerID}},
+			{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerID}},
 			{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 		},
 		map[account.ID]eventstore.SequencedEvent{},
@@ -189,7 +189,7 @@ func (suite *EventsourcingTestSuite) TestTransferMoneyFailsWithNonexistentTarget
 	// then
 	suite.EqualError(err, "account not found")
 	suite.expectEvents(sourceAccountId, []eventstore.SequencedEvent{
-		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceownerID}},
+		{sourceAccountId, 1, account.AccountOpenedEvent{sourceAccountId, sourceOwnerID}},
 		{sourceAccountId, 2, account.MoneyDepositedEvent{10, 10}},
 	})
 	suite.expectEvents(targetAccountId, []eventstore.SequencedEvent{})
@@ -238,14 +238,14 @@ func (suite *EventsourcingTestSuite) TestWithdrawalIdempotency() {
 
 func (suite *EventsourcingTestSuite) TestTransferIdempotency() {
 	// given
-	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
-	err := suite.service.OpenAccount(sourceAccountId, sourceownerID)
+	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
+	err := suite.service.OpenAccount(sourceAccountId, sourceOwnerID)
 	suite.NoError(err)
 	err = suite.service.Deposit(sourceAccountId, uuid.New(), 100)
 	suite.NoError(err)
 
-	targetAccountId, targetownerID := account.NewID(), account.NewOwnerID()
-	err = suite.service.OpenAccount(targetAccountId, targetownerID)
+	targetAccountId, targetOwnerID := account.NewID(), account.NewOwnerID()
+	err = suite.service.OpenAccount(targetAccountId, targetOwnerID)
 	suite.NoError(err)
 
 	// when
