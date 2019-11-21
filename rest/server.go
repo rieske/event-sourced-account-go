@@ -15,6 +15,61 @@ type Server struct {
 	accountResource accountResource
 }
 
+type response struct {
+	status  int
+	body    []byte
+	headers map[string]string
+}
+
+const (
+	contentTypeHeader = "Content-Type"
+	locationHeader    = "Location"
+)
+
+func responseWithBody(status int, contentType string, body []byte) response {
+	return response{
+		status:  status,
+		body:    body,
+		headers: map[string]string{contentTypeHeader: contentType},
+	}
+}
+
+func jsonResponse(status int, body []byte) response {
+	return response{
+		status:  status,
+		body:    body,
+		headers: map[string]string{contentTypeHeader: "application/json"},
+	}
+}
+
+func locationResponse(status int, location string) response {
+	return response{
+		status:  status,
+		headers: map[string]string{locationHeader: location},
+	}
+}
+
+func notFoundResponse() response {
+	return response{status: http.StatusNotFound}
+}
+
+func noContentResponse() response {
+	return response{status: http.StatusNoContent}
+}
+
+func conflictResponse() response {
+	return response{status: http.StatusConflict}
+}
+
+func errorResponse(statusCode int, err error) response {
+	return jsonResponse(statusCode, []byte(fmt.Sprintf(`{"message":"%s"}`, err.Error())))
+}
+
+func unhandledErrorResponse(err error) response {
+	log.Println(err)
+	return errorResponse(http.StatusInternalServerError, err)
+}
+
 func NewRestServer(store eventsourcing.EventStore, snapshottingFrequency int) *Server {
 	return &Server{
 		accountResource: accountResource{
@@ -24,23 +79,29 @@ func NewRestServer(store eventsourcing.EventStore, snapshottingFrequency int) *S
 }
 
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	log.Printf("%v %v", req.Method, req.URL.Path)
+
 	var head string
+	r := notFoundResponse()
 	head, req.URL.Path = shiftPath(req.URL.Path)
 	switch head {
 	case "api":
 		head, req.URL.Path = shiftPath(req.URL.Path)
 		switch head {
 		case "account":
-			s.accountResource.ServeHTTP(res, req)
-		default:
-			http.NotFound(res, req)
+			r = s.accountResource.handle(res, req)
 		}
 	case "ping":
-		res.WriteHeader(http.StatusOK)
-		writeBody(res, []byte("pong"))
-	default:
-		http.NotFound(res, req)
+		r = responseWithBody(http.StatusOK, "text/plain", []byte("pong"))
 	}
+
+	for n, h := range r.headers {
+		res.Header().Set(n, h)
+	}
+	res.WriteHeader(r.status)
+	writeBody(res, r.body)
+
+	log.Printf("%v", r.status)
 }
 
 // shiftPath splits off the first component of p, which will be cleaned of
@@ -55,11 +116,6 @@ func shiftPath(p string) (head, tail string) {
 	return p[1:i], p[i:]
 }
 
-func respondWithJson(res http.ResponseWriter, json []byte) {
-	res.Header().Set("Content-Type", "application/json")
-	writeBody(res, json)
-}
-
 func writeBody(res http.ResponseWriter, body []byte) {
 	if _, err := res.Write(body); err != nil {
 		log.Println(err)
@@ -67,31 +123,20 @@ func writeBody(res http.ResponseWriter, body []byte) {
 	}
 }
 
-func parseUUID(res http.ResponseWriter, uuidStr string) (uuid.UUID, bool) {
+func parseUUID(uuidStr string) (uuid.UUID, *response) {
 	id, err := uuid.Parse(uuidStr)
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		respondWithJson(res, []byte(fmt.Sprintf(`{"message":"Invalid UUID string: %s"}`, uuidStr)))
-		return id, false
+		r := jsonResponse(http.StatusBadRequest, []byte(fmt.Sprintf(`{"message":"Invalid UUID string: %s"}`, uuidStr)))
+		return id, &r
 	}
-	return id, true
+	return id, nil
 }
 
-func parseAmount(res http.ResponseWriter, amountStr string) (int64, bool) {
+func parseAmount(amountStr string) (int64, *response) {
 	amount, err := strconv.ParseInt(amountStr, 10, 64)
 	if err != nil {
-		respondWithError(res, http.StatusBadRequest, fmt.Errorf("integer amount required, got '%s'", amountStr))
-		return amount, false
+		r := jsonResponse(http.StatusBadRequest, []byte(fmt.Sprintf(`{"message":"integer amount required, got '%s'"}`, amountStr)))
+		return amount, &r
 	}
-	return amount, true
-}
-
-func respondWithError(res http.ResponseWriter, statusCode int, err error) {
-	res.WriteHeader(statusCode)
-	respondWithJson(res, []byte(fmt.Sprintf(`{"message":"%s"}`, err.Error())))
-}
-
-func unhandledError(res http.ResponseWriter, err error) {
-	log.Println(err)
-	respondWithError(res, http.StatusInternalServerError, err)
+	return amount, nil
 }

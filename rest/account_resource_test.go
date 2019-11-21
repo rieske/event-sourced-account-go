@@ -117,7 +117,8 @@ func (f accountResourceFixture) close(id account.ID) {
 func TestOpenAccount(t *testing.T) {
 	f := newFixture(t)
 	accountID, ownerID := account.NewID(), account.NewOwnerID()
-	f.createAccount(accountID, ownerID)
+	location := f.createAccount(accountID, ownerID)
+	assert.Equal(t, "/api/account/"+accountID.String(), location)
 }
 
 func TestRequireValidUUIDForaccountID(t *testing.T) {
