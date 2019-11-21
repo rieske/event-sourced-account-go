@@ -21,6 +21,8 @@ docker: build
 	docker build -t $(DOCKER_TAG) .
 docker-run: docker
 	docker run -p 8080:8080 $(DOCKER_TAG)
+compose-run: build
+	docker-compose up --build
 clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
