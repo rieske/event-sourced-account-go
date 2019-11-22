@@ -61,13 +61,13 @@ func conflictResponse() response {
 	return response{status: http.StatusConflict}
 }
 
-func errorResponse(statusCode int, err error) response {
-	return jsonResponse(statusCode, []byte(fmt.Sprintf(`{"message":"%s"}`, err.Error())))
+func errorResponse(statusCode int, message string) response {
+	return jsonResponse(statusCode, []byte(fmt.Sprintf(`{"message":"%s"}`, message)))
 }
 
 func unhandledErrorResponse(err error) response {
 	log.Println(err)
-	return errorResponse(http.StatusInternalServerError, err)
+	return errorResponse(http.StatusInternalServerError, err.Error())
 }
 
 func NewRestServer(store eventsourcing.EventStore, snapshottingFrequency int) *Server {
@@ -127,7 +127,7 @@ func writeBody(res http.ResponseWriter, body []byte) {
 func parseUUID(uuidStr string) (uuid.UUID, *response) {
 	id, err := uuid.Parse(uuidStr)
 	if err != nil {
-		r := jsonResponse(http.StatusBadRequest, []byte(fmt.Sprintf(`{"message":"Invalid UUID string: %s"}`, uuidStr)))
+		r := errorResponse(http.StatusBadRequest, fmt.Sprintf("Invalid UUID string: %s", uuidStr))
 		return id, &r
 	}
 	return id, nil
@@ -136,7 +136,7 @@ func parseUUID(uuidStr string) (uuid.UUID, *response) {
 func parseAmount(amountStr string) (int64, *response) {
 	amount, err := strconv.ParseInt(amountStr, 10, 64)
 	if err != nil {
-		r := jsonResponse(http.StatusBadRequest, []byte(fmt.Sprintf(`{"message":"integer amount required, got '%s'"}`, amountStr)))
+		r := errorResponse(http.StatusBadRequest, fmt.Sprintf("integer amount required, got '%s'", amountStr))
 		return amount, &r
 	}
 	return amount, nil

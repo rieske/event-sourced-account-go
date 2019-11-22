@@ -2,7 +2,6 @@ package rest
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"net/http"
@@ -34,7 +33,7 @@ func (r *accountResource) handle(res http.ResponseWriter, req *http.Request) res
 	case http.MethodDelete:
 		return r.delete(account.ID{accountID})
 	}
-	return errorResponse(http.StatusMethodNotAllowed, errors.New("method not allowed"))
+	return errorResponse(http.StatusMethodNotAllowed, "method not allowed")
 }
 
 func (r *accountResource) post(accountID account.ID, query url.Values) response {
@@ -170,15 +169,15 @@ func (r *accountResource) transfer(sourceAccountId account.ID, query url.Values)
 func handleDomainError(err error) response {
 	switch err {
 	case account.Exists:
-		return errorResponse(http.StatusConflict, err)
+		return errorResponse(http.StatusConflict, err.Error())
 	case account.NotFound:
-		return errorResponse(http.StatusNotFound, err)
+		return errorResponse(http.StatusNotFound, err.Error())
 	case account.NegativeDeposit:
-		return errorResponse(http.StatusBadRequest, err)
+		return errorResponse(http.StatusBadRequest, err.Error())
 	case account.NegativeWithdrawal:
-		return errorResponse(http.StatusBadRequest, err)
+		return errorResponse(http.StatusBadRequest, err.Error())
 	case account.InsufficientBalance:
-		return errorResponse(http.StatusBadRequest, err)
+		return errorResponse(http.StatusBadRequest, err.Error())
 	case account.ConcurrentModification:
 		return conflictResponse()
 	default:
