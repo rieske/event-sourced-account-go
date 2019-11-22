@@ -36,7 +36,7 @@ func newSnapshotJsonTestFixture(t *testing.T) jsonTestFixture {
 		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.ID{accountID},
 			Seq:         42,
-			Payload:     []byte(`{"ID":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","OwnerID":"c2b0bbce-679a-4af5-9a75-8958da9eb02c","Balance":20,"Open":true}`),
+			Payload:     []byte(`{"accountId":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","ownerId":"c2b0bbce-679a-4af5-9a75-8958da9eb02c","balance":20,"open":true}`),
 			EventType:   serialization.Snapshot,
 		},
 	}
@@ -60,7 +60,7 @@ func newAccountOpenedJsonTestFixture(t *testing.T) jsonTestFixture {
 		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.ID{accountID},
 			Seq:         42,
-			Payload:     []byte(`{"AccountID":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","OwnerID":"c2b0bbce-679a-4af5-9a75-8958da9eb02c"}`),
+			Payload:     []byte(`{"accountId":"ce7d9c87-e348-406b-933b-0c6dfc0f014e","ownerId":"c2b0bbce-679a-4af5-9a75-8958da9eb02c"}`),
 			EventType:   serialization.AccountOpened,
 		},
 	}
@@ -82,7 +82,7 @@ func newMoneyDepositedJsonTestFixture(t *testing.T) jsonTestFixture {
 		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.ID{accountID},
 			Seq:         42,
-			Payload:     []byte(`{"AmountDeposited":5,"Balance":10}`),
+			Payload:     []byte(`{"amountDeposited":5,"balance":10}`),
 			EventType:   serialization.MoneyDeposited,
 		},
 	}
@@ -104,7 +104,7 @@ func newMoneyWithdrawnJsonTestFixture(t *testing.T) jsonTestFixture {
 		serializedEvent: eventstore.SerializedEvent{
 			AggregateId: account.ID{accountID},
 			Seq:         42,
-			Payload:     []byte(`{"AmountWithdrawn":5,"Balance":10}`),
+			Payload:     []byte(`{"amountWithdrawn":5,"balance":10}`),
 			EventType:   serialization.MoneyWithdrawn,
 		},
 	}

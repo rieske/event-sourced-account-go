@@ -123,14 +123,3 @@ func (a *Account) applyMoneyWithdrawn(event MoneyWithdrawnEvent) {
 func (a *Account) applyAccountClosed(event AccountClosedEvent) {
 	a.open = false
 }
-
-type Snapshot struct {
-	ID      ID
-	OwnerID OwnerID
-	Balance int64
-	Open    bool
-}
-
-func (s Snapshot) Apply(a *Account) {
-	a.applySnapshot(s)
-}

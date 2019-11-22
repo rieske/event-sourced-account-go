@@ -161,7 +161,7 @@ func TestQueryAccount(t *testing.T) {
 	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 	assert.Equal(t,
 		fmt.Sprintf(
-			`{"ID":"%s","OwnerID":"%s","Balance":0,"Open":true}`,
+			`{"accountId":"%s","ownerId":"%s","balance":0,"open":true}`,
 			accountID.String(), ownerID.String()),
 		res.Body.String(),
 	)
@@ -413,7 +413,7 @@ func TestQueryAccountEvents(t *testing.T) {
 	assert.Equal(
 		t,
 		fmt.Sprintf(
-			`[{"AggregateId":"%s","Seq":1,"Event":{"AccountID":"%s","OwnerID":"%s"}},{"AggregateId":"%s","Seq":2,"Event":{"AmountDeposited":5,"Balance":5}},{"AggregateId":"%s","Seq":3,"Event":{"AmountDeposited":12,"Balance":17}}]`,
+			`[{"AggregateId":"%s","Seq":1,"Event":{"accountId":"%s","ownerId":"%s"}},{"AggregateId":"%s","Seq":2,"Event":{"amountDeposited":5,"balance":5}},{"AggregateId":"%s","Seq":3,"Event":{"amountDeposited":12,"balance":17}}]`,
 			accountID, accountID, ownerID, accountID, accountID,
 		),
 		res.Body.String(),

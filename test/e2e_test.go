@@ -87,7 +87,7 @@ func TestCreateAndQueryAccount(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(
 		t,
-		fmt.Sprintf(`{"ID":"%s","OwnerID":"%s","Balance":0,"Open":true}`, accountID, ownerID),
+		fmt.Sprintf(`{"accountId":"%s","ownerId":"%s","balance":0,"open":true}`, accountID, ownerID),
 		string(body),
 	)
 }
@@ -110,7 +110,7 @@ func TestConsistencyInDistributedEnvironmentUnderLoad(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(
 		t,
-		fmt.Sprintf(`{"ID":"%s","OwnerID":"%s","Balance":%d,"Open":true}`, accountID, ownerID, depositCount),
+		fmt.Sprintf(`{"accountId":"%s","ownerId":"%s","balance":%d,"open":true}`, accountID, ownerID, depositCount),
 		string(body),
 	)
 }

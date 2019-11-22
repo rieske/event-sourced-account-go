@@ -58,6 +58,12 @@ Those will spawn a docker-composed environment with two service instances connec
 a mysql container and a load balancer on top. Tests will be executed against the load balancer,
 simulating a distributed environment and asserting that the service can scale and remain consistent.
 
+
+In order to run the build with all test levels: unit, integration and end to end, run
+```
+make full
+```
+
 ### Running
 
 Service can be started with an in memory event store implementation using
