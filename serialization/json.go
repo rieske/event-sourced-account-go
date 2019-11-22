@@ -67,34 +67,21 @@ func deserializeEvent(payload []byte, typeAlias int) (account.Event, error) {
 	}
 }
 
-func (s jsonEventSerializer) SerializeEvent(e eventstore.SequencedEvent) (eventstore.SerializedEvent, error) {
-	serializedPayload, err := json.Marshal(e.Event)
-	if err != nil {
-		return eventstore.SerializedEvent{}, err
-	}
-	eventType, err := eventTypeAlias(e.Event)
-	if err != nil {
-		return eventstore.SerializedEvent{}, err
-	}
+func (s jsonEventSerializer) SerializeEvent(e eventstore.SequencedEvent) (event eventstore.SerializedEvent, err error) {
+	event.AggregateId = e.AggregateId
+	event.Seq = e.Seq
 
-	serializedEvent := eventstore.SerializedEvent{
-		AggregateId: e.AggregateId,
-		Seq:         e.Seq,
-		Payload:     serializedPayload,
-		EventType:   eventType,
+	event.Payload, err = json.Marshal(e.Event)
+	if err != nil {
+		return
 	}
-
-	return serializedEvent, nil
+	event.EventType, err = eventTypeAlias(e.Event)
+	return
 }
 
-func (s jsonEventSerializer) DeserializeEvent(se eventstore.SerializedEvent) (eventstore.SequencedEvent, error) {
-	event, err := deserializeEvent(se.Payload, se.EventType)
-	if err != nil {
-		return eventstore.SequencedEvent{}, err
-	}
-	return eventstore.SequencedEvent{
-		AggregateId: se.AggregateId,
-		Seq:         se.Seq,
-		Event:       event,
-	}, nil
+func (s jsonEventSerializer) DeserializeEvent(se eventstore.SerializedEvent) (event eventstore.SequencedEvent, err error) {
+	event.AggregateId = se.AggregateId
+	event.Seq = se.Seq
+	event.Event, err = deserializeEvent(se.Payload, se.EventType)
+	return
 }
