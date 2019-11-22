@@ -30,7 +30,7 @@ services:
       - database
 
   database:
-    image: mysql
+    image: mysql:8.0.18
     environment:
       MYSQL_ROOT_PASSWORD: test
       MYSQL_USER: test
