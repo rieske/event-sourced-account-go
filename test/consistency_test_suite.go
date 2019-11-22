@@ -86,8 +86,8 @@ func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
 
 func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 	// given
-	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
-	err := suite.accountService.OpenAccount(sourceAccountId, sourceownerID)
+	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
+	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerID)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount*suite.concurrentUsers))
 	suite.NoError(err)
@@ -115,8 +115,8 @@ func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 
 func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfers() {
 	// given
-	sourceAccountId, sourceownerID := account.NewID(), account.NewOwnerID()
-	err := suite.accountService.OpenAccount(sourceAccountId, sourceownerID)
+	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
+	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerID)
 	suite.NoError(err)
 	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)
