@@ -32,10 +32,17 @@ func main() {
 		eventStore = eventstore.NewInMemoryStore()
 	}
 
-	server := rest.NewRestServer(eventStore, 50)
 	port := "8080"
+
+	s := &http.Server{
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  20 * time.Second,
+		Addr:         ":" + port,
+		Handler:      rest.NewRestHandler(eventStore, 50),
+	}
 	log.Printf("Starting http server on port %v\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, server))
+	log.Fatal(s.ListenAndServe())
 }
 
 func waitForDBConnection(db *sql.DB) {

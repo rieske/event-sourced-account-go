@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-type Server struct {
+type RootHandler struct {
 	accountResource accountResource
 }
 
@@ -70,15 +70,15 @@ func unhandledErrorResponse(err error) response {
 	return errorResponse(http.StatusInternalServerError, err.Error())
 }
 
-func NewRestServer(store eventsourcing.EventStore, snapshottingFrequency int) *Server {
-	return &Server{
+func NewRestHandler(store eventsourcing.EventStore, snapshottingFrequency int) *RootHandler {
+	return &RootHandler{
 		accountResource: accountResource{
 			accountService: eventsourcing.NewAccountService(store, snapshottingFrequency),
 		},
 	}
 }
 
-func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+func (s *RootHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	correlationId := uuid.New().String()
 	log.Printf("[%v] %v %v", correlationId, req.Method, req.URL.Path)
 

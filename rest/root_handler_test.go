@@ -10,7 +10,7 @@ import (
 )
 
 func TestPing(t *testing.T) {
-	server := rest.NewRestServer(eventstore.NewInMemoryStore(), 0)
+	server := rest.NewRestHandler(eventstore.NewInMemoryStore(), 0)
 
 	req, err := http.NewRequest(http.MethodGet, "/ping", nil)
 	assert.NoError(t, err)

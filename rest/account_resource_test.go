@@ -16,13 +16,13 @@ import (
 
 type accountResourceFixture struct {
 	assert.Assertions
-	server *rest.Server
+	server *rest.RootHandler
 }
 
 func newFixture(t *testing.T) accountResourceFixture {
 	return accountResourceFixture{
 		Assertions: *assert.New(t),
-		server:     rest.NewRestServer(eventstore.NewInMemoryStore(), 0),
+		server:     rest.NewRestHandler(eventstore.NewInMemoryStore(), 0),
 	}
 }
 
