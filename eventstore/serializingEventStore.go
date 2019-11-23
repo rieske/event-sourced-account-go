@@ -74,11 +74,8 @@ func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[acc
 
 func (s serializingEventStore) LoadSnapshot(id account.ID) (SequencedEvent, error) {
 	serializedSnapshot, err := s.store.LoadSnapshot(id)
-	if err != nil {
+	if err != nil || serializedSnapshot == nil {
 		return SequencedEvent{}, err
-	}
-	if serializedSnapshot == nil {
-		return SequencedEvent{}, nil
 	}
 	snapshot, err := s.serializer.DeserializeEvent(*serializedSnapshot)
 	if err != nil {
