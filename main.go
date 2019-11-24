@@ -41,7 +41,6 @@ func main() {
 		Addr:         ":" + port,
 		Handler:      rest.NewRestHandler(eventStore, 50),
 	}
-	s.SetKeepAlivesEnabled(false)
 	log.Printf("Starting http server on port %v\n", port)
 	log.Fatal(s.ListenAndServe())
 }
