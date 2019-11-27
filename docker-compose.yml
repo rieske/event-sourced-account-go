@@ -3,13 +3,22 @@ version: '2.4'
 
 services:
 
-  lb:
-    build: infrastructure/load-balancer
+  #lb:
+  #  build: infrastructure/load-balancer
+  #  depends_on:
+  #    - account-1
+  #    - account-2
+  #  ports:
+  #    - 8080:80
+
+  lb-envoy:
+    build: infrastructure/envoy
     depends_on:
       - account-1
       - account-2
     ports:
-      - 8080:80
+      - 9901
+      - 8080:10000
 
   account-1:
     build: .
