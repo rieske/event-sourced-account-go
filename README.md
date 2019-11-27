@@ -85,3 +85,12 @@ make compose-run
 This time the service will also be accessible on localhost:8080, just that this time requests
 will go via a load balancer to two service instances in a round robin fashion and with a shared
 mysql database.
+
+### Monitoring
+
+Basic metrics are exposed to Prometheus and sample configuration of prometheus together with 
+Grafana and a service dashboard can be accessed by spawning a composed environment using
+```
+make compose-run
+```
+Prometheus is exposed on port 9090 and Grafana is available on port 3000.
