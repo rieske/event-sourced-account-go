@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/rieske/event-sourced-account-go/eventstore/mysql"
@@ -32,17 +33,28 @@ func main() {
 		eventStore = eventstore.NewInMemoryStore()
 	}
 
-	port := "8080"
+	shutdown := make(chan bool)
+	http.Handle("/prometheus", promhttp.Handler())
+	go func() {
+		log.Print(http.ListenAndServe(":8081", nil))
+		shutdown <- true
+	}()
 
+	servicePort := "8080"
 	s := &http.Server{
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  20 * time.Second,
-		Addr:         ":" + port,
+		Addr:         ":" + servicePort,
 		Handler:      rest.NewRestHandler(eventStore, 50),
 	}
-	log.Printf("Starting http server on port %v\n", port)
-	log.Fatal(s.ListenAndServe())
+	go func() {
+		log.Printf("Starting http server on port %v\n", servicePort)
+		log.Print(s.ListenAndServe())
+		shutdown <- true
+	}()
+
+	<-shutdown
 }
 
 func waitForDBConnection(db *sql.DB) {
