@@ -22,14 +22,18 @@ func (s AccountService) OpenAccount(id account.ID, ownerID account.OwnerID) erro
 }
 
 func (s AccountService) Deposit(id account.ID, txId uuid.UUID, amount int64) error {
-	return s.repo.transact(id, txId, func(a *account.Account) error {
-		return a.Deposit(amount)
+	return retryOnConcurrentModification(func() error {
+		return s.repo.transact(id, txId, func(a *account.Account) error {
+			return a.Deposit(amount)
+		})
 	})
 }
 
 func (s AccountService) Withdraw(id account.ID, txId uuid.UUID, amount int64) error {
-	return s.repo.transact(id, txId, func(a *account.Account) error {
-		return a.Withdraw(amount)
+	return retryOnConcurrentModification(func() error {
+		return s.repo.transact(id, txId, func(a *account.Account) error {
+			return a.Withdraw(amount)
+		})
 	})
 }
 
@@ -40,12 +44,13 @@ func (s AccountService) CloseAccount(id account.ID) error {
 }
 
 func (s AccountService) Transfer(sourceAccountId, targetAccountId account.ID, txId uuid.UUID, amount int64) error {
-	return s.repo.biTransact(sourceAccountId, targetAccountId, txId, func(source *account.Account, target *account.Account) error {
-		err := source.Withdraw(amount)
-		if err != nil {
-			return err
-		}
-		return target.Deposit(amount)
+	return retryOnConcurrentModification(func() error {
+		return s.repo.biTransact(sourceAccountId, targetAccountId, txId, func(source *account.Account, target *account.Account) error {
+			if err := source.Withdraw(amount); err != nil {
+				return err
+			}
+			return target.Deposit(amount)
+		})
 	})
 }
 
@@ -55,4 +60,15 @@ func (s AccountService) QueryAccount(id account.ID) (*account.Snapshot, error) {
 
 func (s AccountService) Events(id account.ID) ([]eventstore.SequencedEvent, error) {
 	return s.repo.store.Events(id, 0)
+}
+
+func retryOnConcurrentModification(fn func() error) error {
+	var err error
+	for try := 0; try < 3; try++ {
+		err = fn()
+		if err != account.ConcurrentModification {
+			return err
+		}
+	}
+	return err
 }
