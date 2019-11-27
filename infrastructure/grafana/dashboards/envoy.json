@@ -1,30 +1,4 @@
 {
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "5.0.2"
-    },
-    {
-      "type": "panel",
-      "id": "graph",
-      "name": "Graph",
-      "version": "5.0.0"
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "5.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "singlestat",
-      "name": "Singlestat",
-      "version": "5.0.0"
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -38,11 +12,11 @@
       }
     ]
   },
+  "description": "Envoy proxy monitoring Dashboard with cluster and host level templates. ",
   "editable": true,
   "gnetId": 6693,
   "graphTooltip": 0,
-  "id": null,
-  "iteration": 1530162066466,
+  "iteration": 1574872134051,
   "links": [],
   "panels": [
     {
@@ -86,6 +60,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -168,6 +143,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -249,6 +225,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -330,6 +307,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -411,6 +389,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -492,6 +471,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -569,6 +549,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -588,6 +569,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Total active connections",
       "tooltip": {
@@ -620,7 +602,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -649,6 +635,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -668,6 +655,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Total requests",
       "tooltip": {
@@ -700,7 +688,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -714,166 +706,6 @@
         "w": 12,
         "x": 0,
         "y": 12
-      },
-      "id": 5,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "envoy_http_downstream_cx_active{envoy_http_conn_manager_prefix=~\"$cluster\",host=~\"$hosts\"}",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "{{zone}}({{host}})",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Downstream Total active connections",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 12
-      },
-      "id": 6,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "irate(envoy_http_downstream_rq_total{envoy_http_conn_manager_prefix=~\"$cluster\",host=~\"$hosts\"}[1m])",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "{{zone}}({{host}})",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Downstream Total active requests",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 19
       },
       "id": 15,
       "legend": {
@@ -889,6 +721,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -915,6 +748,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Upstream Network Traffic",
       "tooltip": {
@@ -947,7 +781,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -960,12 +798,13 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 19
+        "y": 12
       },
-      "id": 17,
+      "id": 22,
       "legend": {
         "avg": false,
         "current": false,
+        "hideEmpty": true,
         "max": false,
         "min": false,
         "show": true,
@@ -975,9 +814,10 @@
       "lines": true,
       "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
+      "nullPointMode": "null as zero",
+      "options": {},
       "percentage": false,
-      "pointradius": 5,
+      "pointradius": 2,
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [],
@@ -986,24 +826,32 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(envoy_http_downstream_cx_rx_bytes_total{envoy_http_conn_manager_prefix=~\"$cluster\",host=~\"$hosts\"}[1m])",
+          "expr": "histogram_quantile(0.99, sum(rate(envoy_cluster_external_upstream_rq_time_bucket[1m])) by (le, envoy_cluster_name))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{zone}} ({{host}}) - in",
+          "legendFormat": "{{envoy_cluster_name}} 99th percentile",
           "refId": "A"
         },
         {
-          "expr": "irate(envoy_http_downstream_cx_tx_bytes_total{envoy_http_conn_manager_prefix=~\"$cluster\",host=~\"$hosts\"}[1m])",
+          "expr": "histogram_quantile(0.95, sum(rate(envoy_cluster_external_upstream_rq_time_bucket[1m])) by (le, envoy_cluster_name))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{zone}} ({{host}}) - out",
+          "legendFormat": "{{envoy_cluster_name}} 95th percentile",
           "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum(rate(envoy_cluster_external_upstream_rq_time_bucket[1m])) by (le, envoy_cluster_name))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{envoy_cluster_name}} 90th percentile",
+          "refId": "C"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
-      "title": "Downstream Network Traffic",
+      "title": "Upstream latencies",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1019,7 +867,7 @@
       },
       "yaxes": [
         {
-          "format": "decbytes",
+          "format": "ms",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1034,7 +882,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1047,7 +899,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 19
       },
       "id": 7,
       "legend": {
@@ -1063,6 +915,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1089,6 +942,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Downstream members",
       "tooltip": {
@@ -1121,19 +975,27 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": "30s",
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [],
   "templating": {
     "list": [
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "text": "account",
+          "value": "account"
+        },
         "datasource": "Prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Cluster",
@@ -1143,6 +1005,7 @@
         "query": "label_values(envoy_cluster_upstream_cx_total, envoy_cluster_name)",
         "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -1152,8 +1015,12 @@
       },
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": "Prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": true,
         "label": "Hosts",
@@ -1163,6 +1030,7 @@
         "query": "label_values(envoy_cluster_upstream_cx_total{envoy_cluster_name=\"$cluster\"}, host)",
         "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -1204,6 +1072,5 @@
   "timezone": "",
   "title": "Envoy Proxy",
   "uid": "000000003",
-  "version": 45,
-  "description": "Envoy proxy monitoring Dashboard with cluster and host level templates. "
+  "version": 1
 }
