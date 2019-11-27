@@ -1,5 +1,5 @@
 ---
-version: '3.7'
+version: '2.4'
 
 services:
 
@@ -19,6 +19,7 @@ services:
       MYSQL_URL: test:test@tcp(database:3306)/event_store
     depends_on:
       - database
+    mem_limit: 64M
 
   account-2:
     build: .
@@ -28,6 +29,7 @@ services:
       MYSQL_URL: test:test@tcp(database:3306)/event_store
     depends_on:
       - database
+    mem_limit: 64M
 
   database:
     image: mysql:8.0.18
