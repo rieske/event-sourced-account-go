@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var serializer = serialization.NewJsonEventSerializer()
+var jsonSerializer = serialization.NewJsonEventSerializer()
 
 type jsonTestFixture struct {
 	event           eventstore.SequencedEvent
@@ -132,7 +132,7 @@ func newAccountClosedJsonTestFixture(t *testing.T) jsonTestFixture {
 func TestJsonSerializeSnapshot(t *testing.T) {
 	fixture := newSnapshotJsonTestFixture(t)
 
-	serializedEvent, err := serializer.SerializeEvent(fixture.event)
+	serializedEvent, err := jsonSerializer.SerializeEvent(fixture.event)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.serializedEvent, serializedEvent)
@@ -141,7 +141,7 @@ func TestJsonSerializeSnapshot(t *testing.T) {
 func TestJsonDeserializeSnapshot(t *testing.T) {
 	fixture := newSnapshotJsonTestFixture(t)
 
-	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
+	event, err := jsonSerializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.event, event)
@@ -150,7 +150,7 @@ func TestJsonDeserializeSnapshot(t *testing.T) {
 func TestJsonSerializeAccountOpened(t *testing.T) {
 	fixture := newAccountOpenedJsonTestFixture(t)
 
-	serializedEvent, err := serializer.SerializeEvent(fixture.event)
+	serializedEvent, err := jsonSerializer.SerializeEvent(fixture.event)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.serializedEvent, serializedEvent)
@@ -159,7 +159,7 @@ func TestJsonSerializeAccountOpened(t *testing.T) {
 func TestJsonDeserializeAccountOpened(t *testing.T) {
 	fixture := newAccountOpenedJsonTestFixture(t)
 
-	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
+	event, err := jsonSerializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.event, event)
@@ -168,7 +168,7 @@ func TestJsonDeserializeAccountOpened(t *testing.T) {
 func TestJsonSerializeMoneyDeposited(t *testing.T) {
 	fixture := newMoneyDepositedJsonTestFixture(t)
 
-	serializedEvent, err := serializer.SerializeEvent(fixture.event)
+	serializedEvent, err := jsonSerializer.SerializeEvent(fixture.event)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.serializedEvent, serializedEvent)
@@ -177,7 +177,7 @@ func TestJsonSerializeMoneyDeposited(t *testing.T) {
 func TestJsonDeserializeMoneyDeposited(t *testing.T) {
 	fixture := newMoneyDepositedJsonTestFixture(t)
 
-	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
+	event, err := jsonSerializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.event, event)
@@ -186,7 +186,7 @@ func TestJsonDeserializeMoneyDeposited(t *testing.T) {
 func TestJsonSerializeMoneyWithdrawn(t *testing.T) {
 	fixture := newMoneyWithdrawnJsonTestFixture(t)
 
-	serializedEvent, err := serializer.SerializeEvent(fixture.event)
+	serializedEvent, err := jsonSerializer.SerializeEvent(fixture.event)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.serializedEvent, serializedEvent)
@@ -195,7 +195,7 @@ func TestJsonSerializeMoneyWithdrawn(t *testing.T) {
 func TestJsonDeserializeMoneyWithdrawn(t *testing.T) {
 	fixture := newMoneyWithdrawnJsonTestFixture(t)
 
-	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
+	event, err := jsonSerializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.event, event)
@@ -204,7 +204,7 @@ func TestJsonDeserializeMoneyWithdrawn(t *testing.T) {
 func TestJsonSerializeAccountClosed(t *testing.T) {
 	fixture := newAccountClosedJsonTestFixture(t)
 
-	serializedEvent, err := serializer.SerializeEvent(fixture.event)
+	serializedEvent, err := jsonSerializer.SerializeEvent(fixture.event)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.serializedEvent, serializedEvent)
@@ -213,7 +213,7 @@ func TestJsonSerializeAccountClosed(t *testing.T) {
 func TestJsonDeserializeAccountClosed(t *testing.T) {
 	fixture := newAccountClosedJsonTestFixture(t)
 
-	event, err := serializer.DeserializeEvent(fixture.serializedEvent)
+	event, err := jsonSerializer.DeserializeEvent(fixture.serializedEvent)
 
 	assert.NoError(t, err)
 	assert.Equal(t, fixture.event, event)

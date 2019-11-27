@@ -40,7 +40,26 @@ func eventTypeAlias(event account.Event) (int, error) {
 	}
 }
 
-func deserializeEvent(payload []byte, typeAlias int) (account.Event, error) {
+func (s jsonEventSerializer) SerializeEvent(e eventstore.SequencedEvent) (event eventstore.SerializedEvent, err error) {
+	event.AggregateId = e.AggregateId
+	event.Seq = e.Seq
+
+	event.Payload, err = json.Marshal(e.Event)
+	if err != nil {
+		return
+	}
+	event.EventType, err = eventTypeAlias(e.Event)
+	return
+}
+
+func (s jsonEventSerializer) DeserializeEvent(se eventstore.SerializedEvent) (event eventstore.SequencedEvent, err error) {
+	event.AggregateId = se.AggregateId
+	event.Seq = se.Seq
+	event.Event, err = deserializeJsonEvent(se.Payload, se.EventType)
+	return
+}
+
+func deserializeJsonEvent(payload []byte, typeAlias int) (account.Event, error) {
 	switch typeAlias {
 	case Snapshot:
 		var event account.Snapshot
@@ -65,23 +84,4 @@ func deserializeEvent(payload []byte, typeAlias int) (account.Event, error) {
 	default:
 		return nil, errors.New(fmt.Sprintf("Don't know how to deserialize event with type alias %v", typeAlias))
 	}
-}
-
-func (s jsonEventSerializer) SerializeEvent(e eventstore.SequencedEvent) (event eventstore.SerializedEvent, err error) {
-	event.AggregateId = e.AggregateId
-	event.Seq = e.Seq
-
-	event.Payload, err = json.Marshal(e.Event)
-	if err != nil {
-		return
-	}
-	event.EventType, err = eventTypeAlias(e.Event)
-	return
-}
-
-func (s jsonEventSerializer) DeserializeEvent(se eventstore.SerializedEvent) (event eventstore.SequencedEvent, err error) {
-	event.AggregateId = se.AggregateId
-	event.Seq = se.Seq
-	event.Event, err = deserializeEvent(se.Payload, se.EventType)
-	return
 }

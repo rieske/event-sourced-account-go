@@ -27,7 +27,7 @@ func main() {
 		mysql.MigrateSchema(db, "infrastructure/schema/mysql")
 		sqlStore := mysql.NewEventStore(db)
 		log.Println("Using mysql event store")
-		eventStore = eventstore.NewSerializingEventStore(sqlStore, serialization.NewJsonEventSerializer())
+		eventStore = eventstore.NewSerializingEventStore(sqlStore, serialization.NewMsgpackEventSerializer())
 	} else {
 		log.Println("Using in-memory event store")
 		eventStore = eventstore.NewInMemoryStore()
