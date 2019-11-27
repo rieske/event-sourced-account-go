@@ -53,6 +53,7 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ORG_ROLE: "Editor"
+      GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning/
       - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards/
