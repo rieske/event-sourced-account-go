@@ -43,10 +43,5 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: account-1
-                      port_value: 8080
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: account-2
+                      address: account
                       port_value: 8080

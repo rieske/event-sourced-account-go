@@ -3,24 +3,15 @@ version: '2.4'
 
 services:
 
-  #lb:
-  #  build: infrastructure/load-balancer
-  #  depends_on:
-  #    - account-1
-  #    - account-2
-  #  ports:
-  #    - 8080:80
-
-  lb-envoy:
+  lb:
     build: infrastructure/envoy
     depends_on:
-      - account-1
-      - account-2
+      - account
     ports:
-      - 9901
+      - 9901:9901
       - 8080:10000
 
-  account-1:
+  account:
     build: .
     ports:
       - 8080
@@ -29,16 +20,7 @@ services:
     depends_on:
       - database
     mem_limit: 64M
-
-  account-2:
-    build: .
-    ports:
-      - 8080
-    environment:
-      MYSQL_URL: test:test@tcp(database:3306)/event_store
-    depends_on:
-      - database
-    mem_limit: 64M
+    scale: 2
 
   database:
     image: mysql:8.0.18

@@ -100,7 +100,7 @@ func TestConsistencyInDistributedEnvironmentUnderLoad(t *testing.T) {
 	accountLocation, err := res.Location()
 	require.NoError(t, err)
 
-	depositCount := 500
+	depositCount := 1000
 	depositConcurrently(t, depositCount, 8, accountID)
 
 	res, err = http.Get(accountLocation.String())

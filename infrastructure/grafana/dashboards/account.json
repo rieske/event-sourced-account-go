@@ -16,7 +16,7 @@
   "editable": true,
   "gnetId": 6671,
   "graphTooltip": 0,
-  "iteration": 1574854466869,
+  "iteration": 1574941798860,
   "links": [],
   "panels": [
     {
@@ -68,7 +68,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_resident_memory_bytes{instance=~\"$instance\"}",
+          "expr": "process_resident_memory_bytes{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - resident",
@@ -77,7 +77,7 @@
           "step": 4
         },
         {
-          "expr": "process_virtual_memory_bytes{instance=~\"$instance\"}",
+          "expr": "process_virtual_memory_bytes{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - virtual",
@@ -176,7 +176,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(process_resident_memory_bytes{instance=~\"$instance\"}[$interval])",
+          "expr": "rate(process_resident_memory_bytes{application=\"$application\", instance=~\"$instance\"}[$interval])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - resident",
@@ -185,7 +185,7 @@
           "step": 4
         },
         {
-          "expr": "deriv(process_virtual_memory_bytes{instance=~\"$instance\"}[$interval])",
+          "expr": "deriv(process_virtual_memory_bytes{application=\"$application\", instance=~\"$instance\"}[$interval])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - virtual",
@@ -284,7 +284,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_memstats_alloc_bytes{instance=~\"$instance\"}",
+          "expr": "go_memstats_alloc_bytes{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - bytes allocated",
@@ -293,7 +293,7 @@
           "step": 4
         },
         {
-          "expr": "rate(go_memstats_alloc_bytes_total{instance=~\"$instance\"}[30s])",
+          "expr": "rate(go_memstats_alloc_bytes_total{application=\"$application\", instance=~\"$instance\"}[30s])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - alloc rate",
@@ -302,7 +302,7 @@
           "step": 4
         },
         {
-          "expr": "go_memstats_stack_inuse_bytes{instance=~\"$instance\"}",
+          "expr": "go_memstats_stack_inuse_bytes{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - stack inuse",
@@ -311,7 +311,7 @@
           "step": 4
         },
         {
-          "expr": "go_memstats_heap_inuse_bytes{instance=~\"$instance\"}",
+          "expr": "go_memstats_heap_inuse_bytes{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
@@ -411,7 +411,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "deriv(go_memstats_alloc_bytes{instance=~\"$instance\"}[$interval])",
+          "expr": "deriv(go_memstats_alloc_bytes{application=\"$application\", instance=~\"$instance\"}[$interval])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - bytes allocated",
@@ -420,7 +420,7 @@
           "step": 4
         },
         {
-          "expr": "rate(go_memstats_alloc_bytes_total{instance=~\"$instance\"}[$interval])",
+          "expr": "rate(go_memstats_alloc_bytes_total{application=\"$application\", instance=~\"$instance\"}[$interval])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - alloc rate",
@@ -429,7 +429,7 @@
           "step": 4
         },
         {
-          "expr": "deriv(go_memstats_stack_inuse_bytes{instance=~\"$instance\"}[$interval])",
+          "expr": "deriv(go_memstats_stack_inuse_bytes{application=\"$application\", instance=~\"$instance\"}[$interval])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}} - stack inuse",
@@ -438,7 +438,7 @@
           "step": 4
         },
         {
-          "expr": "deriv(go_memstats_heap_inuse_bytes{instance=~\"$instance\"}[$interval])",
+          "expr": "deriv(go_memstats_heap_inuse_bytes{application=\"$application\", instance=~\"$instance\"}[$interval])",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
@@ -533,7 +533,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{instance=~\"$instance\"}",
+          "expr": "process_open_fds{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}}",
@@ -627,7 +627,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "deriv(process_open_fds{instance=~\"$instance\"}[$interval])",
+          "expr": "deriv(process_open_fds{application=\"$application\", instance=~\"$instance\"}[$interval])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}}",
@@ -721,7 +721,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_goroutines{instance=~\"$instance\"}",
+          "expr": "go_goroutines{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}}",
@@ -815,7 +815,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_gc_duration_seconds{instance=~\"$instance\"}",
+          "expr": "go_gc_duration_seconds{application=\"$application\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{instance}}: {{quantile}}",
@@ -874,42 +874,49 @@
   "templating": {
     "list": [
       {
+        "allValue": null,
         "current": {
+          "tags": [],
           "text": "account",
           "value": "account"
         },
-        "hide": 2,
+        "datasource": "Prometheus",
+        "definition": "label_values(go_info, application)",
+        "hide": 0,
+        "includeAll": false,
         "label": "",
-        "name": "service",
-        "options": [
-          {
-            "selected": true,
-            "text": "account",
-            "value": "account"
-          }
-        ],
-        "query": "account",
+        "multi": false,
+        "name": "application",
+        "options": [],
+        "query": "label_values(go_info, application)",
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": false,
-        "type": "constant"
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "allValue": ".*",
         "current": {
-          "text": "account-1:8081 + account-2:8081",
+          "tags": [],
+          "text": "All",
           "value": [
-            "account-1:8081",
-            "account-2:8081"
+            "$__all"
           ]
         },
         "datasource": "Prometheus",
-        "definition": "label_values(process_resident_memory_bytes{job=\"$service\"}, instance)",
+        "definition": "label_values(process_resident_memory_bytes{application=\"$application\"}, instance)",
         "hide": 0,
         "includeAll": true,
         "label": null,
         "multi": true,
         "name": "instance",
         "options": [],
-        "query": "label_values(process_resident_memory_bytes{job=\"$service\"}, instance)",
+        "query": "label_values(process_resident_memory_bytes{application=\"$application\"}, instance)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -998,7 +1005,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Go Processes",
+  "title": "Go Services",
   "uid": "ypFZFgvmz",
   "version": 1
 }
