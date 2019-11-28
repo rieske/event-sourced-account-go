@@ -88,8 +88,8 @@ mysql database.
 
 ### Monitoring
 
-Basic metrics are exposed to Prometheus and sample configuration of prometheus together with 
-Grafana and a service dashboard can be accessed by spawning a composed environment using
+Basic metrics are exposed to Prometheus and sample configuration of Prometheus together with 
+Grafana and a service/envoy dashboards can be accessed by spawning a composed environment using
 ```
 make compose-run
 ```
