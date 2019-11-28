@@ -154,8 +154,10 @@ func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[
 		if err := insertEvents(tx, events, txId); err != nil {
 			return err
 		}
-		if err := updateSnapshots(tx, snapshots); err != nil {
-			return err
+		if len(snapshots) != 0 {
+			if err := updateSnapshots(tx, snapshots); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
