@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/rieske/event-sourced-account-go/eventstore"
@@ -15,6 +17,25 @@ import (
 	"time"
 )
 
+var (
+	inUseConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "db_conn_in_use",
+		Help: "Number of in-use database connections",
+	})
+	idleConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "db_conn_idle",
+		Help: "Number of idle database connections",
+	})
+	openConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "db_conn_open",
+		Help: "Number of open database connections",
+	})
+	maxOpenConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "db_conn_max",
+		Help: "Number of max open database connections",
+	})
+)
+
 func main() {
 	var eventStore eventsourcing.EventStore
 	if mysqlURL, ok := os.LookupEnv("MYSQL_URL"); ok {
@@ -23,10 +44,13 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
-		db.SetMaxOpenConns(20)
-		db.SetMaxIdleConns(10)
+		db.SetMaxOpenConns(5)
+		db.SetMaxIdleConns(5)
 		waitForDBConnection(db)
 		mysql.MigrateSchema(db, "infrastructure/schema/mysql")
+
+		dbMetrics(db)
+
 		sqlStore := mysql.NewEventStore(db)
 		log.Println("Using mysql event store")
 		eventStore = eventstore.NewSerializingEventStore(sqlStore, serialization.NewMsgpackEventSerializer())
@@ -57,6 +81,19 @@ func main() {
 	}()
 
 	<-shutdown
+}
+
+func dbMetrics(db *sql.DB) {
+	go func() {
+		for {
+			s := db.Stats()
+			inUseConnections.Set(float64(s.InUse))
+			idleConnections.Set(float64(s.Idle))
+			openConnections.Set(float64(s.OpenConnections))
+			maxOpenConnections.Set(float64(s.MaxOpenConnections))
+			time.Sleep(1 * time.Second)
+		}
+	}()
 }
 
 func waitForDBConnection(db *sql.DB) {
