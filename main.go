@@ -23,6 +23,8 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
+		db.SetMaxOpenConns(20)
+		db.SetMaxIdleConns(10)
 		waitForDBConnection(db)
 		mysql.MigrateSchema(db, "infrastructure/schema/mysql")
 		sqlStore := mysql.NewEventStore(db)

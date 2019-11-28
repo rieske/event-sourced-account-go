@@ -15,7 +15,10 @@ import (
 )
 
 type EventStore struct {
-	db *sql.DB
+	db                    *sql.DB
+	selectEventsStmt      *sql.Stmt
+	selectSnapshotStmt    *sql.Stmt
+	selectTransactionStmt *sql.Stmt
 }
 
 const (
@@ -46,42 +49,27 @@ func MigrateSchema(db *sql.DB, schemaLocation string) {
 }
 
 func NewEventStore(db *sql.DB) *EventStore {
-	return &EventStore{db: db}
+	return &EventStore{
+		db:                    db,
+		selectEventsStmt:      prepareStatementOrPanic(db, selectEventsSql),
+		selectSnapshotStmt:    prepareStatementOrPanic(db, selectSnapshotSql),
+		selectTransactionStmt: prepareStatementOrPanic(db, selectTransactionSql),
+	}
 }
 
-func (es *EventStore) sqlSelect(
-	selectSql string,
-	query func(stmt *sql.Stmt) (*sql.Rows, error),
-	rowExtractor func(rows *sql.Rows) error,
-) error {
-	stmt, err := es.db.Prepare(selectSql)
+func prepareStatementOrPanic(db *sql.DB, sql string) *sql.Stmt {
+	stmt, err := db.Prepare(sql)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	defer closeResource(stmt)
-	rows, err := query(stmt)
-	if err != nil {
-		return err
-	}
-	defer closeResource(rows)
-
-	if err := rowExtractor(rows); err != nil {
-		return err
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return stmt
 }
 
 func (es *EventStore) Events(id account.ID, version int) ([]eventstore.SerializedEvent, error) {
 	var events []eventstore.SerializedEvent
 
-	err := es.sqlSelect(
-		selectEventsSql,
-		func(stmt *sql.Stmt) (*sql.Rows, error) {
-			return stmt.Query(id.UUID[:], version)
-		},
+	err := sqlSelect(
+		es.selectEventsStmt,
 		func(rows *sql.Rows) error {
 			for rows.Next() {
 				event := eventstore.SerializedEvent{AggregateId: id}
@@ -93,6 +81,7 @@ func (es *EventStore) Events(id account.ID, version int) ([]eventstore.Serialize
 			}
 			return nil
 		},
+		id.UUID[:], version,
 	)
 
 	return events, err
@@ -101,11 +90,8 @@ func (es *EventStore) Events(id account.ID, version int) ([]eventstore.Serialize
 func (es *EventStore) LoadSnapshot(id account.ID) (*eventstore.SerializedEvent, error) {
 	var snapshot *eventstore.SerializedEvent
 
-	err := es.sqlSelect(
-		selectSnapshotSql,
-		func(stmt *sql.Stmt) (*sql.Rows, error) {
-			return stmt.Query(id.UUID[:])
-		},
+	err := sqlSelect(
+		es.selectSnapshotStmt,
 		func(rows *sql.Rows) error {
 			if rows.Next() {
 				event := eventstore.SerializedEvent{AggregateId: id}
@@ -117,6 +103,7 @@ func (es *EventStore) LoadSnapshot(id account.ID) (*eventstore.SerializedEvent, 
 			}
 			return nil
 		},
+		id.UUID[:],
 	)
 
 	return snapshot, err
@@ -125,15 +112,13 @@ func (es *EventStore) LoadSnapshot(id account.ID) (*eventstore.SerializedEvent, 
 func (es *EventStore) TransactionExists(id account.ID, txId uuid.UUID) (bool, error) {
 	transactionExists := false
 
-	err := es.sqlSelect(
-		selectTransactionSql,
-		func(stmt *sql.Stmt) (*sql.Rows, error) {
-			return stmt.Query(id.UUID[:], txId[:])
-		},
+	err := sqlSelect(
+		es.selectTransactionStmt,
 		func(rows *sql.Rows) error {
 			transactionExists = rows.Next()
 			return nil
 		},
+		id.UUID[:], txId[:],
 	)
 
 	return transactionExists, err
@@ -177,6 +162,26 @@ func (es *EventStore) withTransaction(doInTx func(tx *sql.Tx) error) error {
 	}
 
 	return tx.Commit()
+}
+
+func sqlSelect(
+	stmt *sql.Stmt,
+	rowExtractor func(rows *sql.Rows) error,
+	args ...interface{},
+) error {
+	rows, err := stmt.Query(args...)
+	if err != nil {
+		return err
+	}
+	defer closeResource(rows)
+
+	if err := rowExtractor(rows); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func insertTransaction(tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
