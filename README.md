@@ -78,7 +78,7 @@ make docker-run
 ```
 
 Alternatively, two instances packaged in a docker container, connected to a mysql container and
-exposed via HAProxy load balancer using:
+exposed via Envoy Proxy load balancer using:
 ```
 make compose-run
 ```
