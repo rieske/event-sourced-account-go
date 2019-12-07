@@ -20,7 +20,7 @@ services:
       MYSQL_URL: test:test@tcp(database:3306)/event_store
     depends_on:
       - database
-    mem_limit: 64M
+    mem_limit: 32M
     scale: 2
 
   database:
