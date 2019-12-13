@@ -18,6 +18,7 @@ services:
       - 8080
     environment:
       MYSQL_URL: test:test@tcp(database:3306)/event_store
+      ZIPKIN_URL: http://zipkin:9411/api/v2/spans
     depends_on:
       - database
     mem_limit: 32M
@@ -54,6 +55,12 @@ services:
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning/
       - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards/
     mem_limit: 64M
+
+  zipkin:
+    image: openzipkin/zipkin:2.19.2
+    ports:
+      - 9411:9411
+    mem_limit: 512M
 
 volumes:
   data:

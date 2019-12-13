@@ -2,6 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -10,11 +16,11 @@ import (
 	"github.com/rieske/event-sourced-account-go/eventstore/mysql"
 	"github.com/rieske/event-sourced-account-go/rest"
 	"github.com/rieske/event-sourced-account-go/serialization"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"time"
+
+	zipkinsql "github.com/jcchavezs/zipkin-instrumentation-sql"
+	zipkin "github.com/openzipkin/zipkin-go"
+	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
+	zipkinreporter "github.com/openzipkin/zipkin-go/reporter/http"
 )
 
 var (
@@ -36,10 +42,40 @@ var (
 	})
 )
 
+func noTracingHttpHandler(h http.Handler) http.Handler {
+	return h
+}
+
 func main() {
+	var tracingHandler func(http.Handler) http.Handler
+	driverName := "mysql"
+	if zipkinURL, ok := os.LookupEnv("ZIPKIN_URL"); ok {
+		reporter := zipkinreporter.NewReporter(zipkinURL)
+		defer reporter.Close()
+
+		endpoint, err := zipkin.NewEndpoint("account-go", ":0")
+		if err != nil {
+			log.Fatalf("unable to create local endpoint: %v", err)
+		}
+
+		tracer, err := zipkin.NewTracer(reporter, zipkin.WithLocalEndpoint(endpoint))
+		if err != nil {
+			log.Fatalf("unable to create tracer: %v", err)
+		}
+
+		driverName, err = zipkinsql.Register("mysql", tracer, zipkinsql.WithAllTraceOptions(), zipkinsql.WithAllowRootSpan(false))
+		if err != nil {
+			log.Fatalf("unable to register zipkin driver: %v", err)
+		}
+
+		tracingHandler = zipkinhttp.NewServerMiddleware(tracer, zipkinhttp.TagResponseSize(true))
+	} else {
+		tracingHandler = noTracingHttpHandler
+	}
+
 	var eventStore eventsourcing.EventStore
 	if mysqlURL, ok := os.LookupEnv("MYSQL_URL"); ok {
-		db, err := sql.Open("mysql", mysqlURL)
+		db, err := sql.Open(driverName, mysqlURL)
 		defer closeResource(db)
 		if err != nil {
 			log.Panic(err)
@@ -72,7 +108,7 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  20 * time.Second,
 		Addr:         ":" + servicePort,
-		Handler:      rest.NewRestHandler(eventStore, 50),
+		Handler:      tracingHandler(rest.NewRestHandler(eventStore, 50)),
 	}
 	go func() {
 		log.Printf("Starting http server on port %v\n", servicePort)
