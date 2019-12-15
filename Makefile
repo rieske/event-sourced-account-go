@@ -1,5 +1,5 @@
 GOCMD=go
-GOBUILD=CGO_ENABLED=0 $(GOCMD) build
+GOBUILD=CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOCMD) build
 GOCLEAN=$(GOCMD) clean -testcache
 GOTEST=$(GOCMD) test ./...
 GOGET=$(GOCMD) get
