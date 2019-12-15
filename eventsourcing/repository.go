@@ -1,6 +1,8 @@
 package eventsourcing
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 )
@@ -21,8 +23,8 @@ func (r repository) newEventStream() *eventStream {
 	return newEventStream(r.store, r.snapshotFrequency)
 }
 
-func (r repository) query(id account.ID) (*account.Snapshot, error) {
-	a := r.loadAggregate(id)
+func (r repository) query(ctx context.Context, id account.ID) (*account.Snapshot, error) {
+	a := r.loadAggregate(ctx, id)
 	if a.err != nil {
 		return nil, a.err
 	}
@@ -30,38 +32,38 @@ func (r repository) query(id account.ID) (*account.Snapshot, error) {
 	return &snapshot, nil
 }
 
-func (r repository) create(id account.ID, tx transaction) error {
-	a, err := r.newAggregate(id)
+func (r repository) create(ctx context.Context, id account.ID, tx transaction) error {
+	a, err := r.newAggregate(ctx, id)
 	if err != nil {
 		return err
 	}
-	return a.transact(tx, uuid.New())
+	return a.transact(ctx, tx, uuid.New())
 }
 
-func (r repository) transact(id account.ID, txId uuid.UUID, tx transaction) error {
-	a := r.loadAggregate(id)
-	transactionExists, err := r.store.TransactionExists(id, txId)
+func (r repository) transact(ctx context.Context, id account.ID, txId uuid.UUID, tx transaction) error {
+	a := r.loadAggregate(ctx, id)
+	transactionExists, err := r.store.TransactionExists(ctx, id, txId)
 	if err != nil {
 		return err
 	}
 	if transactionExists {
 		return nil
 	}
-	return a.transact(tx, txId)
+	return a.transact(ctx, tx, txId)
 }
 
-func (r repository) biTransact(sourceId, targetId account.ID, txId uuid.UUID, tx biTransaction) error {
+func (r repository) biTransact(ctx context.Context, sourceId, targetId account.ID, txId uuid.UUID, tx biTransaction) error {
 	es := r.newEventStream()
-	source, err := es.replay(sourceId)
+	source, err := es.replay(ctx, sourceId)
 	if err != nil {
 		return err
 	}
-	target, err := es.replay(targetId)
+	target, err := es.replay(ctx, targetId)
 	if err != nil {
 		return err
 	}
 
-	transactionExists, err := r.transactionExists(sourceId, targetId, txId)
+	transactionExists, err := r.transactionExists(ctx, sourceId, targetId, txId)
 	if err != nil {
 		return err
 	}
@@ -72,32 +74,32 @@ func (r repository) biTransact(sourceId, targetId account.ID, txId uuid.UUID, tx
 		return err
 	}
 
-	return es.commit(txId)
+	return es.commit(ctx, txId)
 }
 
-func (r repository) transactionExists(sourceId, targetId account.ID, txId uuid.UUID) (bool, error) {
-	sourceTxExists, err := r.store.TransactionExists(sourceId, txId)
+func (r repository) transactionExists(ctx context.Context, sourceId, targetId account.ID, txId uuid.UUID) (bool, error) {
+	sourceTxExists, err := r.store.TransactionExists(ctx, sourceId, txId)
 	if err != nil {
 		return false, err
 	}
-	targetTxExists, err := r.store.TransactionExists(targetId, txId)
+	targetTxExists, err := r.store.TransactionExists(ctx, targetId, txId)
 	if err != nil {
 		return false, err
 	}
 	return sourceTxExists || targetTxExists, nil
 }
 
-func (r repository) aggregateExists(id account.ID) (bool, error) {
-	events, err := r.store.Events(id, 0)
+func (r repository) aggregateExists(ctx context.Context, id account.ID) (bool, error) {
+	events, err := r.store.Events(ctx, id, 0)
 	if err != nil {
 		return false, err
 	}
 	return len(events) != 0, nil
 }
 
-func (r repository) newAggregate(id account.ID) (*aggregate, error) {
+func (r repository) newAggregate(ctx context.Context, id account.ID) (*aggregate, error) {
 	a := aggregate{}
-	aggregateExists, err := r.aggregateExists(id)
+	aggregateExists, err := r.aggregateExists(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -110,10 +112,10 @@ func (r repository) newAggregate(id account.ID) (*aggregate, error) {
 	return &a, nil
 }
 
-func (r repository) loadAggregate(id account.ID) *aggregate {
+func (r repository) loadAggregate(ctx context.Context, id account.ID) *aggregate {
 	a := aggregate{}
 	a.es = r.newEventStream()
-	a.acc, a.err = a.es.replay(id)
+	a.acc, a.err = a.es.replay(ctx, id)
 	return &a
 }
 
@@ -123,7 +125,7 @@ type aggregate struct {
 	err error
 }
 
-func (a *aggregate) transact(tx transaction, txId uuid.UUID) error {
+func (a *aggregate) transact(ctx context.Context, tx transaction, txId uuid.UUID) error {
 	if a.err != nil {
 		return a.err
 	}
@@ -132,5 +134,5 @@ func (a *aggregate) transact(tx transaction, txId uuid.UUID) error {
 		return err
 	}
 
-	return a.es.commit(txId)
+	return a.es.commit(ctx, txId)
 }

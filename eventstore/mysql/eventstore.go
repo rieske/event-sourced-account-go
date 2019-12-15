@@ -1,17 +1,19 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
+	"strings"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
-	"io"
-	"log"
-	"strings"
 )
 
 type EventStore struct {
@@ -65,10 +67,11 @@ func prepareStatementOrPanic(db *sql.DB, sql string) *sql.Stmt {
 	return stmt
 }
 
-func (es *EventStore) Events(id account.ID, version int) ([]eventstore.SerializedEvent, error) {
+func (es *EventStore) Events(ctx context.Context, id account.ID, version int) ([]eventstore.SerializedEvent, error) {
 	var events []eventstore.SerializedEvent
 
 	err := sqlSelect(
+		ctx,
 		es.selectEventsStmt,
 		func(rows *sql.Rows) error {
 			for rows.Next() {
@@ -87,10 +90,11 @@ func (es *EventStore) Events(id account.ID, version int) ([]eventstore.Serialize
 	return events, err
 }
 
-func (es *EventStore) LoadSnapshot(id account.ID) (*eventstore.SerializedEvent, error) {
+func (es *EventStore) LoadSnapshot(ctx context.Context, id account.ID) (*eventstore.SerializedEvent, error) {
 	var snapshot *eventstore.SerializedEvent
 
 	err := sqlSelect(
+		ctx,
 		es.selectSnapshotStmt,
 		func(rows *sql.Rows) error {
 			if rows.Next() {
@@ -109,10 +113,11 @@ func (es *EventStore) LoadSnapshot(id account.ID) (*eventstore.SerializedEvent, 
 	return snapshot, err
 }
 
-func (es *EventStore) TransactionExists(id account.ID, txId uuid.UUID) (bool, error) {
+func (es *EventStore) TransactionExists(ctx context.Context, id account.ID, txId uuid.UUID) (bool, error) {
 	transactionExists := false
 
 	err := sqlSelect(
+		ctx,
 		es.selectTransactionStmt,
 		func(rows *sql.Rows) error {
 			transactionExists = rows.Next()
@@ -124,23 +129,23 @@ func (es *EventStore) TransactionExists(id account.ID, txId uuid.UUID) (bool, er
 	return transactionExists, err
 }
 
-func (es *EventStore) Append(events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
-	if err := es.append(events, snapshots, txId); err != nil {
+func (es *EventStore) Append(ctx context.Context, events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
+	if err := es.append(ctx, events, snapshots, txId); err != nil {
 		return toConcurrentModification(err)
 	}
 	return nil
 }
 
-func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
-	return es.withTransaction(func(tx *sql.Tx) error {
-		if err := insertTransaction(tx, events, txId); err != nil {
+func (es *EventStore) append(ctx context.Context, events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
+	return es.withTransaction(ctx, func(tx *sql.Tx) error {
+		if err := insertTransaction(ctx, tx, events, txId); err != nil {
 			return err
 		}
-		if err := insertEvents(tx, events, txId); err != nil {
+		if err := insertEvents(ctx, tx, events, txId); err != nil {
 			return err
 		}
 		if len(snapshots) != 0 {
-			if err := updateSnapshots(tx, snapshots); err != nil {
+			if err := updateSnapshots(ctx, tx, snapshots); err != nil {
 				return err
 			}
 		}
@@ -148,8 +153,8 @@ func (es *EventStore) append(events []eventstore.SerializedEvent, snapshots map[
 	})
 }
 
-func (es *EventStore) withTransaction(doInTx func(tx *sql.Tx) error) error {
-	tx, err := es.db.Begin()
+func (es *EventStore) withTransaction(ctx context.Context, doInTx func(tx *sql.Tx) error) error {
+	tx, err := es.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -165,11 +170,12 @@ func (es *EventStore) withTransaction(doInTx func(tx *sql.Tx) error) error {
 }
 
 func sqlSelect(
+	ctx context.Context,
 	stmt *sql.Stmt,
 	rowExtractor func(rows *sql.Rows) error,
 	args ...interface{},
 ) error {
-	rows, err := stmt.Query(args...)
+	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
 		return err
 	}
@@ -184,8 +190,8 @@ func sqlSelect(
 	return nil
 }
 
-func insertTransaction(tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
-	insertTransactionsStmt, err := tx.Prepare(insertTransactionSql)
+func insertTransaction(ctx context.Context, tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
+	insertTransactionsStmt, err := tx.PrepareContext(ctx, insertTransactionSql)
 	if err != nil {
 		return err
 	}
@@ -196,45 +202,45 @@ func insertTransaction(tx *sql.Tx, events []eventstore.SerializedEvent, txId uui
 		aggregateIds[event.AggregateId] = true
 	}
 	for aggregateId := range aggregateIds {
-		if _, err := insertTransactionsStmt.Exec(aggregateId.UUID[:], txId[:]); err != nil {
+		if _, err := insertTransactionsStmt.ExecContext(ctx, aggregateId.UUID[:], txId[:]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func insertEvents(tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
-	insertEventsStmt, err := tx.Prepare(appendEventSql)
+func insertEvents(ctx context.Context, tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
+	insertEventsStmt, err := tx.PrepareContext(ctx, appendEventSql)
 	if err != nil {
 		return err
 	}
 	defer closeResource(insertEventsStmt)
 
 	for _, event := range events {
-		if _, err := insertEventsStmt.Exec(event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload); err != nil {
+		if _, err := insertEventsStmt.ExecContext(ctx, event.AggregateId.UUID[:], event.Seq, txId[:], event.EventType, event.Payload); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func updateSnapshots(tx *sql.Tx, snapshots map[account.ID]eventstore.SerializedEvent) error {
-	deleteSnapshotsStmt, err := tx.Prepare(removeSnapshotSql)
+func updateSnapshots(ctx context.Context, tx *sql.Tx, snapshots map[account.ID]eventstore.SerializedEvent) error {
+	deleteSnapshotsStmt, err := tx.PrepareContext(ctx, removeSnapshotSql)
 	if err != nil {
 		return err
 	}
 	defer closeResource(deleteSnapshotsStmt)
 
-	insertSnapshotsStmt, err := tx.Prepare(storeSnapshotSql)
+	insertSnapshotsStmt, err := tx.PrepareContext(ctx, storeSnapshotSql)
 	if err != nil {
 		return err
 	}
 	defer closeResource(insertSnapshotsStmt)
 	for aggregateId, snapshot := range snapshots {
-		if _, err := deleteSnapshotsStmt.Exec(aggregateId.UUID[:]); err != nil {
+		if _, err := deleteSnapshotsStmt.ExecContext(ctx, aggregateId.UUID[:]); err != nil {
 			return err
 		}
-		if _, err := insertSnapshotsStmt.Exec(snapshot.AggregateId.UUID[:], snapshot.Seq, snapshot.EventType, snapshot.Payload); err != nil {
+		if _, err := insertSnapshotsStmt.ExecContext(ctx, snapshot.AggregateId.UUID[:], snapshot.Seq, snapshot.EventType, snapshot.Payload); err != nil {
 			return err
 		}
 	}

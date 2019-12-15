@@ -1,9 +1,11 @@
 package eventstore
 
 import (
+	"context"
+	"sync"
+
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
-	"sync"
 )
 
 type inmemoryStore struct {
@@ -20,7 +22,7 @@ func NewInMemoryStore() *inmemoryStore {
 	}
 }
 
-func (es *inmemoryStore) Events(id account.ID, version int) ([]SequencedEvent, error) {
+func (es *inmemoryStore) Events(ctx context.Context, id account.ID, version int) ([]SequencedEvent, error) {
 	events := []SequencedEvent{}
 	for _, e := range es.events {
 		if e.AggregateId == id && e.Seq > version {
@@ -30,14 +32,14 @@ func (es *inmemoryStore) Events(id account.ID, version int) ([]SequencedEvent, e
 	return events, nil
 }
 
-func (es *inmemoryStore) LoadSnapshot(id account.ID) (SequencedEvent, error) {
+func (es *inmemoryStore) LoadSnapshot(ctx context.Context, id account.ID) (SequencedEvent, error) {
 	es.mutex.RLock()
 	defer es.mutex.RUnlock()
 
 	return es.snapshots[id], nil
 }
 
-func (es *inmemoryStore) TransactionExists(id account.ID, txId uuid.UUID) (bool, error) {
+func (es *inmemoryStore) TransactionExists(ctx context.Context, id account.ID, txId uuid.UUID) (bool, error) {
 	es.mutex.RLock()
 	defer es.mutex.RUnlock()
 
@@ -48,7 +50,7 @@ func (es *inmemoryStore) TransactionExists(id account.ID, txId uuid.UUID) (bool,
 // Events can only be written in sequence per aggregate.
 // One way to ensure this in RDB - primary key on (aggregateId, sequenceNumber)
 // Event writes have to happen in a transaction - either all get written or none
-func (es *inmemoryStore) Append(events []SequencedEvent, snapshots map[account.ID]SequencedEvent, txId uuid.UUID) error {
+func (es *inmemoryStore) Append(ctx context.Context, events []SequencedEvent, snapshots map[account.ID]SequencedEvent, txId uuid.UUID) error {
 	es.mutex.Lock()
 	defer es.mutex.Unlock()
 

@@ -1,17 +1,19 @@
 package eventsourcing
 
 import (
+	"context"
+	"log"
+
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
-	"log"
 )
 
 type EventStore interface {
-	Events(id account.ID, version int) ([]eventstore.SequencedEvent, error)
-	Append(events []eventstore.SequencedEvent, snapshots map[account.ID]eventstore.SequencedEvent, txId uuid.UUID) error
-	LoadSnapshot(id account.ID) (eventstore.SequencedEvent, error)
-	TransactionExists(id account.ID, txId uuid.UUID) (bool, error)
+	Events(ctx context.Context, id account.ID, version int) ([]eventstore.SequencedEvent, error)
+	Append(ctx context.Context, events []eventstore.SequencedEvent, snapshots map[account.ID]eventstore.SequencedEvent, txId uuid.UUID) error
+	LoadSnapshot(ctx context.Context, id account.ID) (eventstore.SequencedEvent, error)
+	TransactionExists(ctx context.Context, id account.ID, txId uuid.UUID) (bool, error)
 }
 
 type eventStream struct {
@@ -34,9 +36,9 @@ func newEventStream(es EventStore, snapshotFrequency int) *eventStream {
 	}
 }
 
-func (s *eventStream) applySnapshot(id account.ID) (*account.Account, int, error) {
+func (s *eventStream) applySnapshot(ctx context.Context, id account.ID) (*account.Account, int, error) {
 	a := account.New(s)
-	snapshot, err := s.eventStore.LoadSnapshot(id)
+	snapshot, err := s.eventStore.LoadSnapshot(ctx, id)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -47,12 +49,12 @@ func (s *eventStream) applySnapshot(id account.ID) (*account.Account, int, error
 	return a, 0, nil
 }
 
-func (s *eventStream) replay(id account.ID) (*account.Account, error) {
-	a, currentVersion, err := s.applySnapshot(id)
+func (s *eventStream) replay(ctx context.Context, id account.ID) (*account.Account, error) {
+	a, currentVersion, err := s.applySnapshot(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	events, err := s.eventStore.Events(id, currentVersion)
+	events, err := s.eventStore.Events(ctx, id, currentVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +83,8 @@ func (s *eventStream) Append(e account.Event, a *account.Account, id account.ID)
 	}
 }
 
-func (s *eventStream) commit(txId uuid.UUID) error {
-	if err := s.eventStore.Append(s.uncommittedEvents, s.uncommittedSnapshots, txId); err != nil {
+func (s *eventStream) commit(ctx context.Context, txId uuid.UUID) error {
+	if err := s.eventStore.Append(ctx, s.uncommittedEvents, s.uncommittedSnapshots, txId); err != nil {
 		return err
 	}
 	s.uncommittedEvents = nil

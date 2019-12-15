@@ -1,6 +1,8 @@
 package eventstore
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 )
@@ -18,10 +20,10 @@ type eventSerializer interface {
 }
 
 type eventStore interface {
-	Events(id account.ID, version int) ([]SerializedEvent, error)
-	Append(events []SerializedEvent, snapshots map[account.ID]SerializedEvent, txId uuid.UUID) error
-	LoadSnapshot(id account.ID) (*SerializedEvent, error)
-	TransactionExists(id account.ID, txId uuid.UUID) (bool, error)
+	Events(ctx context.Context, id account.ID, version int) ([]SerializedEvent, error)
+	Append(ctx context.Context, events []SerializedEvent, snapshots map[account.ID]SerializedEvent, txId uuid.UUID) error
+	LoadSnapshot(ctx context.Context, id account.ID) (*SerializedEvent, error)
+	TransactionExists(ctx context.Context, id account.ID, txId uuid.UUID) (bool, error)
 }
 
 type serializingEventStore struct {
@@ -36,8 +38,8 @@ func NewSerializingEventStore(store eventStore, serializer eventSerializer) *ser
 	}
 }
 
-func (s serializingEventStore) Events(id account.ID, version int) ([]SequencedEvent, error) {
-	serializedEvents, err := s.store.Events(id, version)
+func (s serializingEventStore) Events(ctx context.Context, id account.ID, version int) ([]SequencedEvent, error) {
+	serializedEvents, err := s.store.Events(ctx, id, version)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +54,7 @@ func (s serializingEventStore) Events(id account.ID, version int) ([]SequencedEv
 	return events, nil
 }
 
-func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[account.ID]SequencedEvent, txId uuid.UUID) error {
+func (s serializingEventStore) Append(ctx context.Context, events []SequencedEvent, snapshots map[account.ID]SequencedEvent, txId uuid.UUID) error {
 	var serializedEvents []SerializedEvent
 	for _, event := range events {
 		serializedEvent, err := s.serializer.SerializeEvent(event)
@@ -69,11 +71,11 @@ func (s serializingEventStore) Append(events []SequencedEvent, snapshots map[acc
 		}
 		serializedSnapshots[id] = serializedSnapshot
 	}
-	return s.store.Append(serializedEvents, serializedSnapshots, txId)
+	return s.store.Append(ctx, serializedEvents, serializedSnapshots, txId)
 }
 
-func (s serializingEventStore) LoadSnapshot(id account.ID) (SequencedEvent, error) {
-	serializedSnapshot, err := s.store.LoadSnapshot(id)
+func (s serializingEventStore) LoadSnapshot(ctx context.Context, id account.ID) (SequencedEvent, error) {
+	serializedSnapshot, err := s.store.LoadSnapshot(ctx, id)
 	if err != nil || serializedSnapshot == nil {
 		return SequencedEvent{}, err
 	}
@@ -84,6 +86,6 @@ func (s serializingEventStore) LoadSnapshot(id account.ID) (SequencedEvent, erro
 	return snapshot, nil
 }
 
-func (s serializingEventStore) TransactionExists(id account.ID, txId uuid.UUID) (bool, error) {
-	return s.store.TransactionExists(id, txId)
+func (s serializingEventStore) TransactionExists(ctx context.Context, id account.ID, txId uuid.UUID) (bool, error) {
+	return s.store.TransactionExists(ctx, id, txId)
 }

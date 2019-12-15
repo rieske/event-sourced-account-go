@@ -6,6 +6,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
@@ -13,10 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"io"
-	"log"
-	"os"
-	"testing"
 )
 
 var store *mysql.EventStore
@@ -88,7 +89,7 @@ func closeResource(c io.Closer) {
 }
 
 func TestSqlStore_Events_Empty(t *testing.T) {
-	events, err := store.Events(account.NewID(), 0)
+	events, err := store.Events(context.Background(), account.NewID(), 0)
 
 	assert.NoError(t, err)
 	assert.Empty(t, events)
@@ -102,24 +103,24 @@ func TestSqlStore_Events_SingleEvent(t *testing.T) {
 		Payload:     []byte("test"),
 		EventType:   42,
 	}}
-	err := store.Append(expectedEvents, nil, uuid.New())
+	err := store.Append(context.Background(), expectedEvents, nil, uuid.New())
 	assert.NoError(t, err)
 
-	events, err := store.Events(id, 0)
+	events, err := store.Events(context.Background(), id, 0)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedEvents, events)
 }
 
 func TestSqlStore_NoTransactionExists(t *testing.T) {
-	transactionExists, err := store.TransactionExists(account.NewID(), uuid.New())
+	transactionExists, err := store.TransactionExists(context.Background(), account.NewID(), uuid.New())
 
 	assert.NoError(t, err)
 	assert.False(t, transactionExists)
 }
 
 func TestSqlStore_NoSnapshot(t *testing.T) {
-	event, err := store.LoadSnapshot(account.NewID())
+	event, err := store.LoadSnapshot(context.Background(), account.NewID())
 
 	assert.NoError(t, err)
 	assert.Nil(t, event)
@@ -143,16 +144,16 @@ func TestSqlStore_InsertTransactionIdForAllAggregatesInEvents(t *testing.T) {
 		},
 	}
 	txId := uuid.New()
-	err := store.Append(expectedEvents, nil, txId)
+	err := store.Append(context.Background(), expectedEvents, nil, txId)
 	assert.NoError(t, err)
 
-	transactionExists, err := store.TransactionExists(sourceAccount, txId)
+	transactionExists, err := store.TransactionExists(context.Background(), sourceAccount, txId)
 	assert.NoError(t, err)
 	assert.True(t, transactionExists)
-	transactionExists, err = store.TransactionExists(targetAccount, txId)
+	transactionExists, err = store.TransactionExists(context.Background(), targetAccount, txId)
 	assert.NoError(t, err)
 	assert.True(t, transactionExists)
-	transactionExists, err = store.TransactionExists(account.NewID(), txId)
+	transactionExists, err = store.TransactionExists(context.Background(), account.NewID(), txId)
 	assert.NoError(t, err)
 	assert.False(t, transactionExists)
 }
@@ -165,10 +166,10 @@ func TestSqlStore_Snapshot(t *testing.T) {
 		Payload:     []byte("test"),
 		EventType:   42,
 	}
-	err := store.Append([]eventstore.SerializedEvent{}, map[account.ID]eventstore.SerializedEvent{id: expectedSnapshot}, uuid.New())
+	err := store.Append(context.Background(), []eventstore.SerializedEvent{}, map[account.ID]eventstore.SerializedEvent{id: expectedSnapshot}, uuid.New())
 	assert.NoError(t, err)
 
-	snapshot, err := store.LoadSnapshot(id)
+	snapshot, err := store.LoadSnapshot(context.Background(), id)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, snapshot)
@@ -183,7 +184,7 @@ func TestSqlStore_ConcurrentModificationErrorOnDuplicateEventSequence(t *testing
 		Payload:     []byte("test"),
 		EventType:   42,
 	}}
-	err := store.Append(expectedEvents, nil, uuid.New())
+	err := store.Append(context.Background(), expectedEvents, nil, uuid.New())
 	assert.NoError(t, err)
 
 	duplicateSequence := []eventstore.SerializedEvent{{
@@ -192,10 +193,10 @@ func TestSqlStore_ConcurrentModificationErrorOnDuplicateEventSequence(t *testing
 		Payload:     []byte("banana"),
 		EventType:   10,
 	}}
-	err = store.Append(duplicateSequence, nil, uuid.New())
+	err = store.Append(context.Background(), duplicateSequence, nil, uuid.New())
 	assert.Equal(t, err, account.ConcurrentModification)
 
-	events, err := store.Events(id, 0)
+	events, err := store.Events(context.Background(), id, 0)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedEvents, events)

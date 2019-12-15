@@ -1,11 +1,13 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/rieske/event-sourced-account-go/account"
-	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"net/http"
 	"net/url"
+
+	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventsourcing"
 )
 
 type accountResource struct {
@@ -23,38 +25,38 @@ func (r *accountResource) handle(res http.ResponseWriter, req *http.Request) res
 
 	switch req.Method {
 	case http.MethodPost:
-		return r.post(account.ID{accountID}, req.URL.Query())
+		return r.post(req.Context(), account.ID{accountID}, req.URL.Query())
 	case http.MethodGet:
 		head, req.URL.Path = shiftPath(req.URL.Path)
-		return r.get(head, account.ID{accountID})
+		return r.get(req.Context(), head, account.ID{accountID})
 	case http.MethodPut:
 		head, req.URL.Path = shiftPath(req.URL.Path)
-		return r.put(head, account.ID{accountID}, req.URL.Query())
+		return r.put(req.Context(), head, account.ID{accountID}, req.URL.Query())
 	case http.MethodDelete:
-		return r.delete(account.ID{accountID})
+		return r.delete(req.Context(), account.ID{accountID})
 	}
 	return errorResponse(http.StatusMethodNotAllowed, "method not allowed")
 }
 
-func (r *accountResource) post(accountID account.ID, query url.Values) response {
+func (r *accountResource) post(ctx context.Context, accountID account.ID, query url.Values) response {
 	ownerID, response := parseUUID(query.Get("owner"))
 	if response != nil {
 		return *response
 	}
 
-	if err := r.accountService.OpenAccount(accountID, account.OwnerID{ownerID}); err != nil {
+	if err := r.accountService.OpenAccount(ctx, accountID, account.OwnerID{ownerID}); err != nil {
 		return handleDomainError(err)
 	}
 
 	return locationResponse(http.StatusCreated, "/api/account/"+accountID.String())
 }
 
-func (r *accountResource) get(action string, id account.ID) response {
+func (r *accountResource) get(ctx context.Context, action string, id account.ID) response {
 	switch action {
 	case "":
-		return r.queryAccount(id)
+		return r.queryAccount(ctx, id)
 	case "events":
-		return r.queryEvents(id)
+		return r.queryEvents(ctx, id)
 	default:
 		return actionNotSupported()
 	}
@@ -64,21 +66,21 @@ func actionNotSupported() response {
 	return jsonResponse(http.StatusBadRequest, []byte(`{"message":"action not supported"}`))
 }
 
-func (r *accountResource) put(action string, id account.ID, query url.Values) response {
+func (r *accountResource) put(ctx context.Context, action string, id account.ID, query url.Values) response {
 	switch action {
 	case "deposit":
-		return r.deposit(id, query)
+		return r.deposit(ctx, id, query)
 	case "withdraw":
-		return r.withdraw(id, query)
+		return r.withdraw(ctx, id, query)
 	case "transfer":
-		return r.transfer(id, query)
+		return r.transfer(ctx, id, query)
 	default:
 		return actionNotSupported()
 	}
 }
 
-func (r *accountResource) queryAccount(id account.ID) response {
-	snapshot, err := r.accountService.QueryAccount(id)
+func (r *accountResource) queryAccount(ctx context.Context, id account.ID) response {
+	snapshot, err := r.accountService.QueryAccount(ctx, id)
 	if err != nil {
 		return handleDomainError(err)
 	}
@@ -90,8 +92,8 @@ func (r *accountResource) queryAccount(id account.ID) response {
 	return jsonResponse(http.StatusOK, response)
 }
 
-func (r *accountResource) queryEvents(id account.ID) response {
-	events, err := r.accountService.Events(id)
+func (r *accountResource) queryEvents(ctx context.Context, id account.ID) response {
+	events, err := r.accountService.Events(ctx, id)
 	if err != nil {
 		return handleDomainError(err)
 	}
@@ -103,7 +105,7 @@ func (r *accountResource) queryEvents(id account.ID) response {
 	return jsonResponse(http.StatusOK, response)
 }
 
-func (r *accountResource) deposit(id account.ID, query url.Values) response {
+func (r *accountResource) deposit(ctx context.Context, id account.ID, query url.Values) response {
 	amount, response := parseAmount(query.Get("amount"))
 	if response != nil {
 		return *response
@@ -113,14 +115,14 @@ func (r *accountResource) deposit(id account.ID, query url.Values) response {
 		return *response
 	}
 
-	if err := r.accountService.Deposit(id, txId, amount); err != nil {
+	if err := r.accountService.Deposit(ctx, id, txId, amount); err != nil {
 		return handleDomainError(err)
 	}
 
 	return noContentResponse()
 }
 
-func (r *accountResource) withdraw(id account.ID, query url.Values) response {
+func (r *accountResource) withdraw(ctx context.Context, id account.ID, query url.Values) response {
 	amount, response := parseAmount(query.Get("amount"))
 	if response != nil {
 		return *response
@@ -130,22 +132,22 @@ func (r *accountResource) withdraw(id account.ID, query url.Values) response {
 		return *response
 	}
 
-	if err := r.accountService.Withdraw(id, txId, amount); err != nil {
+	if err := r.accountService.Withdraw(ctx, id, txId, amount); err != nil {
 		return handleDomainError(err)
 	}
 
 	return noContentResponse()
 }
 
-func (r *accountResource) delete(id account.ID) response {
-	if err := r.accountService.CloseAccount(id); err != nil {
+func (r *accountResource) delete(ctx context.Context, id account.ID) response {
+	if err := r.accountService.CloseAccount(ctx, id); err != nil {
 		return handleDomainError(err)
 	}
 
 	return response{status: http.StatusNoContent}
 }
 
-func (r *accountResource) transfer(sourceAccountId account.ID, query url.Values) response {
+func (r *accountResource) transfer(ctx context.Context, sourceAccountId account.ID, query url.Values) response {
 	targetAccountId, response := parseUUID(query.Get("targetAccount"))
 	if response != nil {
 		return *response
@@ -159,7 +161,7 @@ func (r *accountResource) transfer(sourceAccountId account.ID, query url.Values)
 		return *response
 	}
 
-	if err := r.accountService.Transfer(sourceAccountId, account.ID{targetAccountId}, txId, amount); err != nil {
+	if err := r.accountService.Transfer(ctx, sourceAccountId, account.ID{targetAccountId}, txId, amount); err != nil {
 		return handleDomainError(err)
 	}
 

@@ -1,11 +1,13 @@
 package test
 
 import (
+	"context"
+	"sync"
+
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/stretchr/testify/suite"
-	"sync"
 )
 
 type ConsistencyTestSuite struct {
@@ -72,14 +74,14 @@ func (suite *ConsistencyTestSuite) withRetryOnConcurrentModification(wg *sync.Wa
 
 func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
 	id, ownerID := account.NewID(), account.NewOwnerID()
-	err := suite.accountService.OpenAccount(id, ownerID)
+	err := suite.accountService.OpenAccount(context.Background(), id, ownerID)
 	suite.NoError(err)
 
 	suite.doConcurrently(func(s *eventsourcing.AccountService) error {
-		return s.Deposit(id, uuid.New(), 1)
+		return s.Deposit(context.Background(), id, uuid.New(), 1)
 	})
 
-	snapshot, err := suite.accountService.QueryAccount(id)
+	snapshot, err := suite.accountService.QueryAccount(context.Background(), id)
 	suite.NoError(err)
 	suite.Equal(int64(suite.operationCount*suite.concurrentUsers), snapshot.Balance)
 }
@@ -87,28 +89,28 @@ func (suite *ConsistencyTestSuite) TestConcurrentDeposits() {
 func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 	// given
 	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
-	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerID)
+	err := suite.accountService.OpenAccount(context.Background(), sourceAccountId, sourceOwnerID)
 	suite.NoError(err)
-	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount*suite.concurrentUsers))
+	err = suite.accountService.Deposit(context.Background(), sourceAccountId, uuid.New(), int64(suite.operationCount*suite.concurrentUsers))
 	suite.NoError(err)
 
 	targetAccountId, targetownerID := account.NewID(), account.NewOwnerID()
-	err = suite.accountService.OpenAccount(targetAccountId, targetownerID)
+	err = suite.accountService.OpenAccount(context.Background(), targetAccountId, targetownerID)
 	suite.NoError(err)
-	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))
+	err = suite.accountService.Deposit(context.Background(), targetAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)
 
 	// when
 	suite.doConcurrently(func(s *eventsourcing.AccountService) error {
-		return s.Transfer(sourceAccountId, targetAccountId, uuid.New(), 1)
+		return s.Transfer(context.Background(), sourceAccountId, targetAccountId, uuid.New(), 1)
 	})
 
 	// then
-	sourceSnapshot, err := suite.accountService.QueryAccount(sourceAccountId)
+	sourceSnapshot, err := suite.accountService.QueryAccount(context.Background(), sourceAccountId)
 	suite.NoError(err)
 	suite.Zero(sourceSnapshot.Balance)
 
-	targetSnapshot, err := suite.accountService.QueryAccount(targetAccountId)
+	targetSnapshot, err := suite.accountService.QueryAccount(context.Background(), targetAccountId)
 	suite.NoError(err)
 	suite.Equal(int64(suite.operationCount*suite.concurrentUsers+suite.operationCount), targetSnapshot.Balance)
 }
@@ -116,28 +118,28 @@ func (suite *ConsistencyTestSuite) TestConcurrentTransfers() {
 func (suite *ConsistencyTestSuite) TestConcurrentIdempotentTransfers() {
 	// given
 	sourceAccountId, sourceOwnerID := account.NewID(), account.NewOwnerID()
-	err := suite.accountService.OpenAccount(sourceAccountId, sourceOwnerID)
+	err := suite.accountService.OpenAccount(context.Background(), sourceAccountId, sourceOwnerID)
 	suite.NoError(err)
-	err = suite.accountService.Deposit(sourceAccountId, uuid.New(), int64(suite.operationCount))
+	err = suite.accountService.Deposit(context.Background(), sourceAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)
 
 	targetAccountId, targetownerID := account.NewID(), account.NewOwnerID()
-	err = suite.accountService.OpenAccount(targetAccountId, targetownerID)
+	err = suite.accountService.OpenAccount(context.Background(), targetAccountId, targetownerID)
 	suite.NoError(err)
-	err = suite.accountService.Deposit(targetAccountId, uuid.New(), int64(suite.operationCount))
+	err = suite.accountService.Deposit(context.Background(), targetAccountId, uuid.New(), int64(suite.operationCount))
 	suite.NoError(err)
 
 	// when
 	suite.doConcurrentTransactions(func(s *eventsourcing.AccountService, txId uuid.UUID) error {
-		return s.Transfer(sourceAccountId, targetAccountId, txId, 1)
+		return s.Transfer(context.Background(), sourceAccountId, targetAccountId, txId, 1)
 	})
 
 	// then
-	sourceSnapshot, err := suite.accountService.QueryAccount(sourceAccountId)
+	sourceSnapshot, err := suite.accountService.QueryAccount(context.Background(), sourceAccountId)
 	suite.NoError(err)
 	suite.Zero(sourceSnapshot.Balance)
 
-	targetSnapshot, err := suite.accountService.QueryAccount(targetAccountId)
+	targetSnapshot, err := suite.accountService.QueryAccount(context.Background(), targetAccountId)
 	suite.NoError(err)
 	suite.Equal(int64(suite.operationCount*2), targetSnapshot.Balance)
 }

@@ -1,11 +1,13 @@
 package eventsourcing
 
 import (
+	"context"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 type esTestFixture struct {
@@ -18,12 +20,13 @@ func newInMemoryFixture(t *testing.T) *esTestFixture {
 }
 
 func (f *esTestFixture) givenEvents(events []eventstore.SequencedEvent) {
-	err := f.store.Append(events, map[account.ID]eventstore.SequencedEvent{}, uuid.New())
+	err := f.store.Append(context.Background(), events, map[account.ID]eventstore.SequencedEvent{}, uuid.New())
 	assert.NoError(f.t, err)
 }
 
 func (f *esTestFixture) givenSnapshot(snapshot eventstore.SequencedEvent) {
 	err := f.store.Append(
+		context.Background(),
 		nil,
 		map[account.ID]eventstore.SequencedEvent{
 			snapshot.AggregateId: snapshot,
@@ -42,7 +45,7 @@ func (f *esTestFixture) makeSnapshottingEventStream(snapshotFrequency int) *even
 }
 
 func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId account.ID, event account.Event) {
-	aggregateEvents, err := f.store.Events(aggregateId, 0)
+	aggregateEvents, err := f.store.Events(context.Background(), aggregateId, 0)
 	assert.NoError(f.t, err)
 	seqEvent := aggregateEvents[index]
 
@@ -52,7 +55,7 @@ func (f *esTestFixture) assertPersistedEvent(index int, seq int, aggregateId acc
 }
 
 func (f *esTestFixture) assertPersistedSnapshot(seq int, aggregateId account.ID, event account.Snapshot) {
-	snapshot, err := f.store.LoadSnapshot(aggregateId)
+	snapshot, err := f.store.LoadSnapshot(context.Background(), aggregateId)
 
 	assert.NoError(f.t, err)
 	assert.Equal(f.t, event, snapshot.Event)
@@ -69,7 +72,7 @@ func TestReplayEvents(t *testing.T) {
 	})
 
 	es := fixture.makeEventStream()
-	a, err := es.replay(id)
+	a, err := es.replay(context.Background(), id)
 	assert.NoError(t, err)
 	if a == nil {
 		t.Error("Account expected")
@@ -93,7 +96,7 @@ func TestReplayEventsWithSnapshot(t *testing.T) {
 	})
 
 	es := fixture.makeEventStream()
-	a, err := es.replay(id)
+	a, err := es.replay(context.Background(), id)
 	assert.NoError(t, err)
 	if a == nil {
 		t.Error("Account expected")
@@ -131,7 +134,7 @@ func TestCommit(t *testing.T) {
 	event := account.AccountOpenedEvent{id, account.NewOwnerID()}
 	a := account.Account{}
 	es.Append(event, &a, id)
-	err := es.commit(uuid.New())
+	err := es.commit(context.Background(), uuid.New())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(es.uncommittedEvents))
@@ -151,7 +154,7 @@ func TestAppendEventWithSnapshot(t *testing.T) {
 	})
 
 	es := fixture.makeSnapshottingEventStream(5)
-	a, err := es.replay(id)
+	a, err := es.replay(context.Background(), id)
 	assert.NoError(t, err)
 
 	// when
@@ -185,13 +188,13 @@ func TestCommitWithSnapshot(t *testing.T) {
 	})
 
 	es := fixture.makeSnapshottingEventStream(5)
-	a, err := es.replay(id)
+	a, err := es.replay(context.Background(), id)
 	assert.NoError(t, err)
 	event := account.MoneyDepositedEvent{10, 40}
 	es.Append(event, a, id)
 
 	// when
-	err = es.commit(uuid.New())
+	err = es.commit(context.Background(), uuid.New())
 	assert.NoError(t, err)
 
 	// then
@@ -213,11 +216,11 @@ func TestCommitInSequence(t *testing.T) {
 	depositEvent := account.MoneyDepositedEvent{42, 42}
 	es.Append(depositEvent, &a, id)
 
-	err := es.commit(uuid.New())
+	err := es.commit(context.Background(), uuid.New())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(es.uncommittedEvents))
-	events, err := fixture.store.Events(id, 0)
+	events, err := fixture.store.Events(context.Background(), id, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(events))
 
@@ -234,27 +237,27 @@ func TestCommitOutOfSequence(t *testing.T) {
 	id := account.NewID()
 	accountOpenedEvent := account.AccountOpenedEvent{id, account.NewOwnerID()}
 	es.Append(accountOpenedEvent, &a, id)
-	err := es.commit(uuid.New())
+	err := es.commit(context.Background(), uuid.New())
 	assert.NoError(t, err)
 
 	es1 := newEventStream(store, 0)
-	a1, err := es1.replay(id)
+	a1, err := es1.replay(context.Background(), id)
 	assert.NoError(t, err)
 
 	e1 := account.MoneyDepositedEvent{10, 10}
 	es1.Append(e1, a1, id)
 
 	es2 := newEventStream(store, 0)
-	a2, err := es2.replay(id)
+	a2, err := es2.replay(context.Background(), id)
 	assert.NoError(t, err)
 
 	e2 := account.MoneyDepositedEvent{10, 10}
 	es2.Append(e2, a2, id)
 
-	err = es1.commit(uuid.New())
+	err = es1.commit(context.Background(), uuid.New())
 	assert.NoError(t, err)
 
-	err = es2.commit(uuid.New())
+	err = es2.commit(context.Background(), uuid.New())
 	if err == nil {
 		t.Error("Expected concurrent modification error")
 	}
