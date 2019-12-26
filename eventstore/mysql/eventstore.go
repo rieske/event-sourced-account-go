@@ -138,10 +138,10 @@ func (es *EventStore) Append(ctx context.Context, events []eventstore.Serialized
 
 func (es *EventStore) append(ctx context.Context, events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
 	return es.withTransaction(ctx, func(tx *sql.Tx) error {
-		if err := insertTransaction(ctx, tx, events, txId); err != nil {
+		if err := insertEvents(ctx, tx, events, txId); err != nil {
 			return err
 		}
-		if err := insertEvents(ctx, tx, events, txId); err != nil {
+		if err := insertTransaction(ctx, tx, events, txId); err != nil {
 			return err
 		}
 		if len(snapshots) != 0 {
