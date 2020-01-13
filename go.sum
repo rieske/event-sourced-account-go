@@ -254,6 +254,8 @@ github.com/vmihailenco/msgpack/v4 v4.2.2 h1:0iUl6es8EcZ2THOPT4zXHOiao17nMMCAgtKB
 github.com/vmihailenco/msgpack/v4 v4.2.2/go.mod h1:Mu3B7ZwLd5nNOLVOKt9DecVl7IVg0xkDiEjk6CwMrww=
 github.com/vmihailenco/msgpack/v4 v4.3.1 h1:9Ntwx2CBHXef6XQYkLfByWMwmQm5WspKAR6Xr+O5/ls=
 github.com/vmihailenco/msgpack/v4 v4.3.1/go.mod h1:DuaveEe48abshDmz5UBKyZ+yDugvaeFk5ayfrewUOaw=
+github.com/vmihailenco/msgpack/v4 v4.3.5 h1:UBGCmLC4h5pe4sMyL3E8fqrpCTtbLesLH5mHb/0xC2M=
+github.com/vmihailenco/msgpack/v4 v4.3.5/go.mod h1:DuaveEe48abshDmz5UBKyZ+yDugvaeFk5ayfrewUOaw=
 github.com/vmihailenco/tagparser v0.1.0 h1:u6yzKTY6gW/KxL/K2NTEQUOSXZipyGiIRarGjJKmQzU=
 github.com/vmihailenco/tagparser v0.1.0/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
 github.com/vmihailenco/tagparser v0.1.1 h1:quXMXlA39OCbd2wAdTsGDlK9RkOk6Wuw+x37wVyIuWY=
