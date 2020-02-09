@@ -58,9 +58,10 @@ func startMysqlContainer(ctx context.Context) testcontainers.Container {
 			"MYSQL_USER":          "test",
 			"MYSQL_PASSWORD":      "test",
 		},
+		Tmpfs:      map[string]string{"/var/lib/mysql": "rw"},
 		WaitingFor: wait.ForLog("port: 3306"),
 	}
-	mysql, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
@@ -69,7 +70,7 @@ func startMysqlContainer(ctx context.Context) testcontainers.Container {
 	}
 
 	log.Println("Started mysql container")
-	return mysql
+	return container
 }
 
 func openDatabase(mysql testcontainers.Container, ctx context.Context) (*sql.DB, error) {
