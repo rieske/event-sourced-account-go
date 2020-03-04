@@ -10,6 +10,6 @@ require (
 	github.com/openzipkin/zipkin-go v0.2.2
 	github.com/prometheus/client_golang v1.4.1
 	github.com/stretchr/testify v1.5.1
-	github.com/testcontainers/testcontainers-go v0.3.0
+	github.com/testcontainers/testcontainers-go v0.3.1
 	github.com/vmihailenco/msgpack/v4 v4.3.7
 )
