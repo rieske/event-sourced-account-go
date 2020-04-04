@@ -43,7 +43,7 @@ func (s serializingEventStore) Events(ctx context.Context, id account.ID, versio
 	if err != nil {
 		return nil, err
 	}
-	events := []SequencedEvent{}
+	events := make([]SequencedEvent, 0, len(serializedEvents))
 	for _, serializedEvent := range serializedEvents {
 		event, err := s.serializer.DeserializeEvent(serializedEvent)
 		if err != nil {
@@ -55,7 +55,7 @@ func (s serializingEventStore) Events(ctx context.Context, id account.ID, versio
 }
 
 func (s serializingEventStore) Append(ctx context.Context, events []SequencedEvent, snapshots map[account.ID]SequencedEvent, txId uuid.UUID) error {
-	var serializedEvents []SerializedEvent
+	serializedEvents := make([]SerializedEvent, 0, len(events))
 	for _, event := range events {
 		serializedEvent, err := s.serializer.SerializeEvent(event)
 		if err != nil {

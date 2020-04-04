@@ -23,7 +23,7 @@ func NewInMemoryStore() *inmemoryStore {
 }
 
 func (es *inmemoryStore) Events(ctx context.Context, id account.ID, version int) ([]SequencedEvent, error) {
-	events := []SequencedEvent{}
+	events := make([]SequencedEvent, 0, len(es.events))
 	for _, e := range es.events {
 		if e.AggregateId == id && e.Seq > version {
 			events = append(events, e)
