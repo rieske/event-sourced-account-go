@@ -1,65 +1,68 @@
 // +build integration
 
-package mysql_test
+package postgres_test
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/rieske/event-sourced-account-go/account"
+	"github.com/rieske/event-sourced-account-go/eventstore"
+	"github.com/rieske/event-sourced-account-go/eventstore/postgres"
+	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
 	"log"
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/rieske/event-sourced-account-go/account"
-	"github.com/rieske/event-sourced-account-go/eventstore"
-	"github.com/rieske/event-sourced-account-go/eventstore/mysql"
-	"github.com/stretchr/testify/assert"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	_ "github.com/lib/pq"
 )
 
-var store *mysql.EventStore
+var store *postgres.EventStore
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
-	mysqlContainer := startMysqlContainer(ctx)
-	db, err := openDatabase(mysqlContainer, ctx)
+	postgresContainer := startPostgresContainer(ctx)
+	db, err := openDatabase(postgresContainer, ctx)
 	if err != nil {
 		log.Panic(err)
 	}
-	mysql.MigrateSchema(db, "../../infrastructure/schema/mysql")
-	store = mysql.NewEventStore(db)
+	if err := db.Ping(); err != nil {
+		log.Panic(err)
+	}
+	postgres.MigrateSchema(db, "../../infrastructure/schema/postgres")
+	store = postgres.NewEventStore(db)
 
 	code := m.Run()
 
 	closeResource(db)
-	terminateContainer(mysqlContainer, ctx)
+	terminateContainer(postgresContainer, ctx)
 
 	os.Exit(code)
 }
 
 func terminateContainer(c testcontainers.Container, ctx context.Context) {
-	log.Println("Terminating mysql container")
+	log.Println("Terminating postgres container")
 	err := c.Terminate(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func startMysqlContainer(ctx context.Context) testcontainers.Container {
+func startPostgresContainer(ctx context.Context) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
-		Image:        "mysql:8.0.18",
-		ExposedPorts: []string{"3306"},
+		Image:        "postgres:12.2",
+		ExposedPorts: []string{"5432"},
 		Env: map[string]string{
-			"MYSQL_ROOT_PASSWORD": "test",
-			"MYSQL_DATABASE":      "event_store",
-			"MYSQL_USER":          "test",
-			"MYSQL_PASSWORD":      "test",
+			"POSTGRES_DB":       "event_store",
+			"POSTGRES_USER":     "test",
+			"POSTGRES_PASSWORD": "test",
 		},
-		Tmpfs:      map[string]string{"/var/lib/mysql": "rw"},
-		WaitingFor: wait.ForLog("port: 3306"),
+		Tmpfs:      map[string]string{"/var/lib/postgresql/data": "rw"},
+		WaitingFor: wait.ForLog("[1] LOG:  database system is ready to accept connections"),
 	}
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -69,17 +72,19 @@ func startMysqlContainer(ctx context.Context) testcontainers.Container {
 		log.Panic(err)
 	}
 
-	log.Println("Started mysql container")
+	log.Println("Started postgres container")
 	return container
 }
 
-func openDatabase(mysql testcontainers.Container, ctx context.Context) (*sql.DB, error) {
-	port, err := mysql.MappedPort(ctx, "3306")
+func openDatabase(postgres testcontainers.Container, ctx context.Context) (*sql.DB, error) {
+	port, err := postgres.MappedPort(ctx, "5432")
 	if err != nil {
 		log.Panic(err)
 	}
 
-	return sql.Open("mysql", fmt.Sprintf("test:test@tcp(127.0.0.1:%v)/event_store", port.Port()))
+	psqlInfo := fmt.Sprintf("host=127.0.0.1 port=%v user=test password=test dbname=event_store sslmode=disable", port.Port())
+
+	return sql.Open("postgres", psqlInfo)
 }
 
 func closeResource(c io.Closer) {
