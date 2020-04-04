@@ -84,7 +84,7 @@ func (es *EventStore) Events(ctx context.Context, id account.ID, version int) ([
 			}
 			return nil
 		},
-		id.String(), version,
+		id, version,
 	)
 
 	return events, err
@@ -107,7 +107,7 @@ func (es *EventStore) LoadSnapshot(ctx context.Context, id account.ID) (*eventst
 			}
 			return nil
 		},
-		id.String(),
+		id,
 	)
 
 	return snapshot, err
@@ -123,7 +123,7 @@ func (es *EventStore) TransactionExists(ctx context.Context, id account.ID, txId
 			transactionExists = rows.Next()
 			return nil
 		},
-		id.String(), txId.String(),
+		id, txId,
 	)
 
 	return transactionExists, err
@@ -202,7 +202,7 @@ func insertTransaction(ctx context.Context, tx *sql.Tx, events []eventstore.Seri
 		aggregateIds[event.AggregateId] = true
 	}
 	for aggregateId := range aggregateIds {
-		if _, err := insertTransactionsStmt.ExecContext(ctx, aggregateId.String(), txId.String()); err != nil {
+		if _, err := insertTransactionsStmt.ExecContext(ctx, aggregateId, txId); err != nil {
 			return err
 		}
 	}
@@ -217,7 +217,7 @@ func insertEvents(ctx context.Context, tx *sql.Tx, events []eventstore.Serialize
 	defer closeResource(insertEventsStmt)
 
 	for _, event := range events {
-		if _, err := insertEventsStmt.ExecContext(ctx, event.AggregateId.String(), event.Seq, txId.String(), event.EventType, event.Payload); err != nil {
+		if _, err := insertEventsStmt.ExecContext(ctx, event.AggregateId, event.Seq, txId, event.EventType, event.Payload); err != nil {
 			return err
 		}
 	}
@@ -237,10 +237,10 @@ func updateSnapshots(ctx context.Context, tx *sql.Tx, snapshots map[account.ID]e
 	}
 	defer closeResource(insertSnapshotsStmt)
 	for aggregateId, snapshot := range snapshots {
-		if _, err := deleteSnapshotsStmt.ExecContext(ctx, aggregateId.String()); err != nil {
+		if _, err := deleteSnapshotsStmt.ExecContext(ctx, aggregateId); err != nil {
 			return err
 		}
-		if _, err := insertSnapshotsStmt.ExecContext(ctx, snapshot.AggregateId.String(), snapshot.Seq, snapshot.EventType, snapshot.Payload); err != nil {
+		if _, err := insertSnapshotsStmt.ExecContext(ctx, snapshot.AggregateId, snapshot.Seq, snapshot.EventType, snapshot.Payload); err != nil {
 			return err
 		}
 	}
