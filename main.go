@@ -2,6 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
+	zipkinsql "github.com/jcchavezs/zipkin-instrumentation-sql"
+	"github.com/openzipkin/zipkin-go"
+	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
+	"github.com/openzipkin/zipkin-go/reporter"
+	zipkinreporter "github.com/openzipkin/zipkin-go/reporter/http"
+	"github.com/rieske/event-sourced-account-go/eventstore/postgres"
 	"io"
 	"log"
 	"net/http"
@@ -16,11 +23,6 @@ import (
 	"github.com/rieske/event-sourced-account-go/eventstore/mysql"
 	"github.com/rieske/event-sourced-account-go/rest"
 	"github.com/rieske/event-sourced-account-go/serialization"
-
-	zipkinsql "github.com/jcchavezs/zipkin-instrumentation-sql"
-	zipkin "github.com/openzipkin/zipkin-go"
-	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
-	zipkinreporter "github.com/openzipkin/zipkin-go/reporter/http"
 )
 
 var (
@@ -48,33 +50,49 @@ func noTracingHttpHandler(h http.Handler) http.Handler {
 
 func main() {
 	var tracingHandler func(http.Handler) http.Handler
-	driverName := "mysql"
+	var rep reporter.Reporter
+
 	if zipkinURL, ok := os.LookupEnv("ZIPKIN_URL"); ok {
-		reporter := zipkinreporter.NewReporter(zipkinURL)
-		defer reporter.Close()
-
-		endpoint, err := zipkin.NewEndpoint("account-go", ":0")
-		if err != nil {
-			log.Fatalf("unable to create local endpoint: %v", err)
-		}
-
-		tracer, err := zipkin.NewTracer(reporter, zipkin.WithLocalEndpoint(endpoint))
-		if err != nil {
-			log.Fatalf("unable to create tracer: %v", err)
-		}
-
-		driverName, err = zipkinsql.Register("mysql", tracer, zipkinsql.WithAllTraceOptions(), zipkinsql.WithAllowRootSpan(false))
-		if err != nil {
-			log.Fatalf("unable to register zipkin driver: %v", err)
-		}
-
-		tracingHandler = zipkinhttp.NewServerMiddleware(tracer, zipkinhttp.TagResponseSize(true))
-	} else {
-		tracingHandler = noTracingHttpHandler
+		rep = zipkinreporter.NewReporter(zipkinURL)
+		defer rep.Close()
 	}
 
 	var eventStore eventsourcing.EventStore
-	if mysqlURL, ok := os.LookupEnv("MYSQL_URL"); ok {
+	if postgresHost, ok := os.LookupEnv("POSTGRES_HOST"); ok {
+		posrgresPort := requireEnvVariable("POSTGRES_PORT")
+		posrgresUser := requireEnvVariable("POSTGRES_USER")
+		posrgresPassword := requireEnvVariable("POSTGRES_PASSWORD")
+		posrgresDB := requireEnvVariable("POSTGRES_DB")
+
+		psqlInfo := fmt.Sprintf("host=%s port=%v user=%s password=%s dbname=%s sslmode=disable",
+			postgresHost,
+			posrgresPort,
+			posrgresUser,
+			posrgresPassword,
+			posrgresDB,
+		)
+		driverName := "postgres"
+		tracingHandler, driverName = buildTracingHandler(driverName, rep)
+
+		db, err := sql.Open(driverName, psqlInfo)
+		defer closeResource(db)
+		if err != nil {
+			log.Panic(err)
+		}
+		db.SetMaxOpenConns(5)
+		db.SetMaxIdleConns(5)
+		waitForDBConnection(db)
+		postgres.MigrateSchema(db, "infrastructure/schema/postgres")
+
+		dbMetrics(db)
+
+		sqlStore := postgres.NewEventStore(db)
+		log.Println("Using postgres event store")
+		eventStore = eventstore.NewSerializingEventStore(sqlStore, serialization.NewMsgpackEventSerializer())
+	} else if mysqlURL, ok := os.LookupEnv("MYSQL_URL"); ok {
+		driverName := "mysql"
+		tracingHandler, driverName = buildTracingHandler(driverName, rep)
+
 		db, err := sql.Open(driverName, mysqlURL)
 		defer closeResource(db)
 		if err != nil {
@@ -93,6 +111,7 @@ func main() {
 	} else {
 		log.Println("Using in-memory event store")
 		eventStore = eventstore.NewInMemoryStore()
+		tracingHandler = noTracingHttpHandler
 	}
 
 	shutdown := make(chan bool)
@@ -117,6 +136,37 @@ func main() {
 	}()
 
 	<-shutdown
+}
+
+func buildTracingHandler(driverName string, reporter reporter.Reporter) (func(http.Handler) http.Handler, string) {
+	if reporter == nil {
+		return noTracingHttpHandler, driverName
+	}
+
+	endpoint, err := zipkin.NewEndpoint("account-go", ":0")
+	if err != nil {
+		log.Fatalf("unable to create local endpoint: %v", err)
+	}
+
+	tracer, err := zipkin.NewTracer(reporter, zipkin.WithLocalEndpoint(endpoint))
+	if err != nil {
+		log.Fatalf("unable to create tracer: %v", err)
+	}
+
+	driverName, err = zipkinsql.Register(driverName, tracer, zipkinsql.WithAllTraceOptions(), zipkinsql.WithAllowRootSpan(false))
+	if err != nil {
+		log.Fatalf("unable to register zipkin driver: %v", err)
+	}
+
+	return zipkinhttp.NewServerMiddleware(tracer, zipkinhttp.TagResponseSize(true)), driverName
+}
+
+func requireEnvVariable(v string) string {
+	if val, ok := os.LookupEnv(v); ok {
+		return val
+	}
+	log.Fatalf("%s not specified", v)
+	return ""
 }
 
 func dbMetrics(db *sql.DB) {

@@ -20,7 +20,7 @@ import (
 const (
 	serviceUrl     = "http://localhost:8080"
 	composeCommand = "docker-compose"
-	composeFile    = "../docker-compose.yml"
+	composeFile    = "../docker-compose-postgres.yml"
 )
 
 func waitForPing() {
