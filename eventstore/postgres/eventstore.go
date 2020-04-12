@@ -191,18 +191,18 @@ func sqlSelect(
 }
 
 func insertTransaction(ctx context.Context, tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
-	/*insertTransactionsStmt, err := tx.PrepareContext(ctx, insertTransactionSql)
+	insertTransactionsStmt, err := tx.PrepareContext(ctx, insertTransactionSql)
 	if err != nil {
 		return err
 	}
-	defer closeResource(insertTransactionsStmt)*/
+	defer closeResource(insertTransactionsStmt)
 
 	aggregateIds := map[account.ID]bool{}
 	for _, event := range events {
 		aggregateIds[event.AggregateId] = true
 	}
 	for aggregateId := range aggregateIds {
-		if _, err := tx.ExecContext(ctx, insertTransactionSql, aggregateId, txId); err != nil {
+		if _, err := insertTransactionsStmt.ExecContext(ctx, aggregateId, txId); err != nil {
 			return err
 		}
 	}
