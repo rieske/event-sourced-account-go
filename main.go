@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	_ "expvar"
 	"fmt"
 	zipkinsql "github.com/jcchavezs/zipkin-instrumentation-sql"
 	"github.com/openzipkin/zipkin-go"
@@ -12,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 
@@ -54,7 +56,7 @@ func main() {
 
 	if zipkinURL, ok := os.LookupEnv("ZIPKIN_URL"); ok {
 		rep = zipkinreporter.NewReporter(zipkinURL)
-		defer rep.Close()
+		defer closeResource(rep)
 	}
 
 	var eventStore eventsourcing.EventStore
@@ -124,7 +126,7 @@ func main() {
 	servicePort := "8080"
 	s := &http.Server{
 		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 1 * time.Second,
 		IdleTimeout:  20 * time.Second,
 		Addr:         ":" + servicePort,
 		Handler:      tracingHandler(rest.NewRestHandler(eventStore, 50)),
@@ -134,6 +136,12 @@ func main() {
 		log.Print(s.ListenAndServe())
 		shutdown <- true
 	}()
+
+	if _, ok := os.LookupEnv("CPU_PROFILE"); ok {
+		go func() {
+			http.ListenAndServe("0.0.0.0:6060", nil)
+		}()
+	}
 
 	<-shutdown
 }

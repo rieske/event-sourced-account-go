@@ -61,8 +61,8 @@ func (s *eventStream) replay(ctx context.Context, id account.ID) (*account.Accou
 
 	for _, e := range events {
 		e.Event.Apply(a)
-		currentVersion += 1
 	}
+	currentVersion += len(events)
 
 	if currentVersion == 0 {
 		return nil, account.NotFound

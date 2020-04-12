@@ -16,8 +16,14 @@ services:
     build: .
     ports:
       - 8080
+      #- 6060:6060
     environment:
-      MYSQL_URL: test:test@tcp(database:3306)/event_store
+      #CPU_PROFILE: true
+      POSTGRES_HOST: database
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: event_store
       ZIPKIN_URL: http://zipkin:9411/api/v2/spans
     depends_on:
       - database
@@ -25,14 +31,13 @@ services:
     scale: 2
 
   database:
-    image: mysql:8.0.18
+    image: postgres:12.2
     environment:
-      MYSQL_ROOT_PASSWORD: test
-      MYSQL_USER: test
-      MYSQL_PASSWORD: test
-      MYSQL_DATABASE: event_store
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: event_store
     volumes:
-      - data:/var/lib/mysql
+      - data:/var/lib/postgresql/data
     mem_limit: 512M
 
   prometheus:

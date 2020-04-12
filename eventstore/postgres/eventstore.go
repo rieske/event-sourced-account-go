@@ -27,8 +27,8 @@ const (
 	appendEventSql  = "INSERT INTO Event(aggregateId, sequenceNumber, transactionId, eventType, payload) VALUES($1, $2, $3, $4, $5)"
 	selectEventsSql = "SELECT sequenceNumber, eventType, payload FROM Event WHERE aggregateId = $1 AND sequenceNumber > $2 ORDER BY sequenceNumber ASC"
 
-	removeSnapshotSql = "DELETE FROM Snapshot WHERE aggregateId = $1"
-	storeSnapshotSql  = "INSERT INTO Snapshot(aggregateId, sequenceNumber, eventType, payload) VALUES($1, $2, $3, $4)"
+	storeSnapshotSql = "INSERT INTO Snapshot(aggregateId, sequenceNumber, eventType, payload) VALUES($1, $2, $3, $4) " +
+		"ON CONFLICT (aggregateId) DO UPDATE SET sequenceNumber=$2, eventType=$3, payload=$4"
 	selectSnapshotSql = "SELECT sequenceNumber, eventType, payload FROM Snapshot WHERE aggregateId = $1"
 
 	insertTransactionSql = "INSERT INTO Transaction(aggregateId, transactionId) VALUES($1, $2)"
@@ -191,18 +191,18 @@ func sqlSelect(
 }
 
 func insertTransaction(ctx context.Context, tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
-	insertTransactionsStmt, err := tx.PrepareContext(ctx, insertTransactionSql)
+	/*insertTransactionsStmt, err := tx.PrepareContext(ctx, insertTransactionSql)
 	if err != nil {
 		return err
 	}
-	defer closeResource(insertTransactionsStmt)
+	defer closeResource(insertTransactionsStmt)*/
 
 	aggregateIds := map[account.ID]bool{}
 	for _, event := range events {
 		aggregateIds[event.AggregateId] = true
 	}
 	for aggregateId := range aggregateIds {
-		if _, err := insertTransactionsStmt.ExecContext(ctx, aggregateId, txId); err != nil {
+		if _, err := tx.ExecContext(ctx, insertTransactionSql, aggregateId, txId); err != nil {
 			return err
 		}
 	}
@@ -225,21 +225,12 @@ func insertEvents(ctx context.Context, tx *sql.Tx, events []eventstore.Serialize
 }
 
 func updateSnapshots(ctx context.Context, tx *sql.Tx, snapshots []eventstore.SerializedEvent) error {
-	deleteSnapshotsStmt, err := tx.PrepareContext(ctx, removeSnapshotSql)
-	if err != nil {
-		return err
-	}
-	defer closeResource(deleteSnapshotsStmt)
-
 	insertSnapshotsStmt, err := tx.PrepareContext(ctx, storeSnapshotSql)
 	if err != nil {
 		return err
 	}
 	defer closeResource(insertSnapshotsStmt)
 	for _, snapshot := range snapshots {
-		if _, err := deleteSnapshotsStmt.ExecContext(ctx, snapshot.AggregateId); err != nil {
-			return err
-		}
 		if _, err := insertSnapshotsStmt.ExecContext(ctx, snapshot.AggregateId, snapshot.Seq, snapshot.EventType, snapshot.Payload); err != nil {
 			return err
 		}
