@@ -167,7 +167,7 @@ func TestSqlStore_Snapshot(t *testing.T) {
 		Payload:     []byte("test"),
 		EventType:   42,
 	}
-	err := store.Append(context.Background(), []eventstore.SerializedEvent{}, map[account.ID]eventstore.SerializedEvent{id: expectedSnapshot}, uuid.New())
+	err := store.Append(context.Background(), []eventstore.SerializedEvent{}, []eventstore.SerializedEvent{expectedSnapshot}, uuid.New())
 	assert.NoError(t, err)
 
 	snapshot, err := store.LoadSnapshot(context.Background(), id)

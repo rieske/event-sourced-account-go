@@ -129,14 +129,14 @@ func (es *EventStore) TransactionExists(ctx context.Context, id account.ID, txId
 	return transactionExists, err
 }
 
-func (es *EventStore) Append(ctx context.Context, events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
+func (es *EventStore) Append(ctx context.Context, events []eventstore.SerializedEvent, snapshots []eventstore.SerializedEvent, txId uuid.UUID) error {
 	if err := es.append(ctx, events, snapshots, txId); err != nil {
 		return toConcurrentModification(err)
 	}
 	return nil
 }
 
-func (es *EventStore) append(ctx context.Context, events []eventstore.SerializedEvent, snapshots map[account.ID]eventstore.SerializedEvent, txId uuid.UUID) error {
+func (es *EventStore) append(ctx context.Context, events []eventstore.SerializedEvent, snapshots []eventstore.SerializedEvent, txId uuid.UUID) error {
 	return es.withTransaction(ctx, func(tx *sql.Tx) error {
 		if err := insertEvents(ctx, tx, events, txId); err != nil {
 			return err
@@ -224,7 +224,7 @@ func insertEvents(ctx context.Context, tx *sql.Tx, events []eventstore.Serialize
 	return nil
 }
 
-func updateSnapshots(ctx context.Context, tx *sql.Tx, snapshots map[account.ID]eventstore.SerializedEvent) error {
+func updateSnapshots(ctx context.Context, tx *sql.Tx, snapshots []eventstore.SerializedEvent) error {
 	deleteSnapshotsStmt, err := tx.PrepareContext(ctx, removeSnapshotSql)
 	if err != nil {
 		return err
@@ -236,8 +236,8 @@ func updateSnapshots(ctx context.Context, tx *sql.Tx, snapshots map[account.ID]e
 		return err
 	}
 	defer closeResource(insertSnapshotsStmt)
-	for aggregateId, snapshot := range snapshots {
-		if _, err := deleteSnapshotsStmt.ExecContext(ctx, aggregateId.UUID[:]); err != nil {
+	for _, snapshot := range snapshots {
+		if _, err := deleteSnapshotsStmt.ExecContext(ctx, snapshot.AggregateId.UUID[:]); err != nil {
 			return err
 		}
 		if _, err := insertSnapshotsStmt.ExecContext(ctx, snapshot.AggregateId.UUID[:], snapshot.Seq, snapshot.EventType, snapshot.Payload); err != nil {

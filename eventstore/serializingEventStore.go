@@ -21,7 +21,7 @@ type eventSerializer interface {
 
 type eventStore interface {
 	Events(ctx context.Context, id account.ID, version int) ([]SerializedEvent, error)
-	Append(ctx context.Context, events []SerializedEvent, snapshots map[account.ID]SerializedEvent, txId uuid.UUID) error
+	Append(ctx context.Context, events []SerializedEvent, snapshots []SerializedEvent, txId uuid.UUID) error
 	LoadSnapshot(ctx context.Context, id account.ID) (*SerializedEvent, error)
 	TransactionExists(ctx context.Context, id account.ID, txId uuid.UUID) (bool, error)
 }
@@ -63,13 +63,13 @@ func (s serializingEventStore) Append(ctx context.Context, events []SequencedEve
 		}
 		serializedEvents = append(serializedEvents, serializedEvent)
 	}
-	serializedSnapshots := map[account.ID]SerializedEvent{}
-	for id, snapshot := range snapshots {
+	serializedSnapshots := make([]SerializedEvent, 0, len(snapshots))
+	for _, snapshot := range snapshots {
 		serializedSnapshot, err := s.serializer.SerializeEvent(snapshot)
 		if err != nil {
 			return err
 		}
-		serializedSnapshots[id] = serializedSnapshot
+		serializedSnapshots = append(serializedSnapshots, serializedSnapshot)
 	}
 	return s.store.Append(ctx, serializedEvents, serializedSnapshots, txId)
 }
