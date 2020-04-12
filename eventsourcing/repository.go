@@ -42,8 +42,7 @@ func (r repository) create(ctx context.Context, id account.ID, tx transaction) e
 
 func (r repository) transact(ctx context.Context, id account.ID, txId uuid.UUID, tx transaction) error {
 	a := r.loadAggregate(ctx, id)
-	transactionExists, err := r.store.TransactionExists(ctx, id, txId)
-	if err != nil || transactionExists {
+	if transactionExists, err := r.store.TransactionExists(ctx, id, txId); err != nil || transactionExists {
 		return err
 	}
 	return a.transact(ctx, tx, txId)
@@ -60,10 +59,13 @@ func (r repository) biTransact(ctx context.Context, sourceId, targetId account.I
 		return err
 	}
 
-	transactionExists, err := r.transactionExists(ctx, sourceId, targetId, txId)
-	if err != nil || transactionExists {
+	if transactionExists, err := r.store.TransactionExists(ctx, sourceId, txId); err != nil || transactionExists {
 		return err
 	}
+	if transactionExists, err := r.store.TransactionExists(ctx, targetId, txId); err != nil || transactionExists {
+		return err
+	}
+
 	if err := tx(source, target); err != nil {
 		return err
 	}
@@ -71,24 +73,9 @@ func (r repository) biTransact(ctx context.Context, sourceId, targetId account.I
 	return es.commit(ctx, txId)
 }
 
-func (r repository) transactionExists(ctx context.Context, sourceId, targetId account.ID, txId uuid.UUID) (bool, error) {
-	sourceTxExists, err := r.store.TransactionExists(ctx, sourceId, txId)
-	if err != nil || sourceTxExists {
-		return sourceTxExists, err
-	}
-	targetTxExists, err := r.store.TransactionExists(ctx, targetId, txId)
-	if err != nil || targetTxExists {
-		return targetTxExists, err
-	}
-	return false, nil
-}
-
 func (r repository) aggregateExists(ctx context.Context, id account.ID) (bool, error) {
 	events, err := r.store.Events(ctx, id, 0)
-	if err != nil {
-		return false, err
-	}
-	return len(events) != 0, nil
+	return len(events) != 0, err
 }
 
 func (r repository) newAggregate(ctx context.Context, id account.ID) (*aggregate, error) {
@@ -123,8 +110,7 @@ func (a *aggregate) transact(ctx context.Context, tx transaction, txId uuid.UUID
 	if a.err != nil {
 		return a.err
 	}
-	err := tx(a.acc)
-	if err != nil {
+	if err := tx(a.acc); err != nil {
 		return err
 	}
 
