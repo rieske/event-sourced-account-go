@@ -6,3 +6,5 @@ CREATE TABLE Event(
     payload BYTEA NOT NULL,
     PRIMARY KEY (aggregateId, sequenceNumber)
 );
+
+CREATE INDEX idx_transaction ON Event (aggregateId, transactionId);

@@ -22,7 +22,6 @@ type EventStore struct {
 	selectSnapshotStmt    *sql.Stmt
 	selectTransactionStmt *sql.Stmt
 	storeSnapshotStmt     *sql.Stmt
-	insertTransactionStmt *sql.Stmt
 	appendEventStmt       *sql.Stmt
 }
 
@@ -34,8 +33,7 @@ const (
 		"ON CONFLICT (aggregateId) DO UPDATE SET sequenceNumber=$2, eventType=$3, payload=$4"
 	selectSnapshotSql = "SELECT sequenceNumber, eventType, payload FROM Snapshot WHERE aggregateId = $1"
 
-	insertTransactionSql = "INSERT INTO Transaction(aggregateId, transactionId) VALUES($1, $2)"
-	selectTransactionSql = "SELECT aggregateId FROM Transaction WHERE aggregateId = $1 AND transactionId = $2"
+	selectTransactionSql = "SELECT aggregateId FROM Event WHERE aggregateId = $1 AND transactionId = $2"
 )
 
 func MigrateSchema(db *sql.DB, schemaLocation string) {
@@ -48,7 +46,7 @@ func MigrateSchema(db *sql.DB, schemaLocation string) {
 		log.Panic(err)
 	}
 
-	if err := m.Migrate(3); err != nil && err != migrate.ErrNoChange {
+	if err := m.Migrate(2); err != nil && err != migrate.ErrNoChange {
 		log.Panic(err)
 	}
 }
@@ -60,7 +58,6 @@ func NewEventStore(db *sql.DB) *EventStore {
 		selectSnapshotStmt:    prepareStatementOrPanic(db, selectSnapshotSql),
 		selectTransactionStmt: prepareStatementOrPanic(db, selectTransactionSql),
 		storeSnapshotStmt:     prepareStatementOrPanic(db, storeSnapshotSql),
-		insertTransactionStmt: prepareStatementOrPanic(db, insertTransactionSql),
 		appendEventStmt:       prepareStatementOrPanic(db, appendEventSql),
 	}
 }
@@ -147,9 +144,6 @@ func (es EventStore) append(ctx context.Context, events []eventstore.SerializedE
 		if err := es.insertEvents(ctx, tx, events, txId); err != nil {
 			return err
 		}
-		if err := es.insertTransaction(ctx, tx, events, txId); err != nil {
-			return err
-		}
 		if len(snapshots) != 0 {
 			if err := es.updateSnapshots(ctx, tx, snapshots); err != nil {
 				return err
@@ -192,21 +186,6 @@ func sqlSelect(
 	}
 	if err := rows.Err(); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (es EventStore) insertTransaction(ctx context.Context, tx *sql.Tx, events []eventstore.SerializedEvent, txId uuid.UUID) error {
-	aggregateIds := map[account.ID]bool{}
-	for _, event := range events {
-		aggregateIds[event.AggregateId] = true
-	}
-
-	insertTransactionsStmt := tx.StmtContext(ctx, es.insertTransactionStmt)
-	for aggregateId := range aggregateIds {
-		if _, err := insertTransactionsStmt.ExecContext(ctx, aggregateId, txId); err != nil {
-			return err
-		}
 	}
 	return nil
 }
