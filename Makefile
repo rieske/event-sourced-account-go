@@ -28,7 +28,5 @@ clean:
 	rm -f $(BINARY_NAME) coverage.out coverage.json
 run: build
 	./$(BINARY_NAME)
-coverage-report: test
-	go get github.com/axw/gocov/gocov && $(GOPATH)/bin/gocov convert coverage.out > coverage.json
 
 .PHONY: all test clean
