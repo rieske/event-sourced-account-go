@@ -5,7 +5,7 @@ GOTEST=$(GOCMD) test ./...
 GOGET=$(GOCMD) get
 
 BINARY_NAME=bin/account-app
-DOCKER_TAG=account:snapshot
+DOCKER_TAG=account-go:snapshot
 
 all: build test
 full: build test integration-test e2e-test
@@ -28,7 +28,9 @@ clean:
 	rm -f $(BINARY_NAME) coverage.out coverage.json
 run: build
 	./$(BINARY_NAME)
-coverage-report: test
+get:
+	$(GOGET)
+coverage-report: get test
 	gocov convert coverage.out > coverage.json
 
 .PHONY: all test clean
