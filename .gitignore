@@ -2,3 +2,4 @@
 /event-sourced-account-go
 bin/
 coverage.out
+coverage.json

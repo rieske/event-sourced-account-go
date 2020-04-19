@@ -25,8 +25,10 @@ compose-run: build
 	docker-compose up --build
 clean:
 	$(GOCLEAN)
-	rm -f $(BINARY_NAME)
+	rm -f $(BINARY_NAME) coverage.out coverage.json
 run: build
 	./$(BINARY_NAME)
+coverage-report: test
+	gocov convert coverage.out > coverage.json
 
 .PHONY: all test clean
