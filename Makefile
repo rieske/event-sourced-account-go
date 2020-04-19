@@ -29,6 +29,6 @@ clean:
 run: build
 	./$(BINARY_NAME)
 coverage-report: test
-	$(GOPATH)/bin/gocov convert coverage.out > coverage.json
+	go get && $(GOPATH)/bin/gocov convert coverage.out > coverage.json
 
 .PHONY: all test clean
