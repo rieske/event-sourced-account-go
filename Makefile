@@ -29,6 +29,6 @@ clean:
 run: build
 	./$(BINARY_NAME)
 coverage-report: test
-	sed -i '' 's/^github.com\/rieske\/event-sourced-account-go\///g' coverage.out'
+	sed -i '' 's/^github.com\/rieske\/event-sourced-account-go\///g' coverage.out
 
 .PHONY: all test clean
