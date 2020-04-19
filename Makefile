@@ -12,7 +12,7 @@ full: build test integration-test e2e-test
 build:
 	$(GOBUILD) -o $(BINARY_NAME) -v
 test:
-	$(GOTEST)
+	$(GOTEST) -coverprofile=coverage.out
 integration-test:
 	$(GOTEST) -tags=integration
 e2e-test: build
