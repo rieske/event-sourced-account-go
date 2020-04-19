@@ -32,7 +32,7 @@ Tests without any tag are the fast unit tests and are the ones that run during t
 Normally, I would hook the remaining tests to the build, however since integration and end to end
 tests depend on docker daemon, I wanted to avoid broken builds on machines that might not have it set up.
 
-Next level are the integration tests that use MySql backed event store. Tagged with `integration`.
+Next level are the integration tests that use both Postgres and Mysql backed event store implementations. Tagged with `integration`.
 
 Finally, a couple of end to end tests that focus mainly on sanity testing consistency in a distributed
 environment. Tagged with `e2e`.
@@ -45,11 +45,11 @@ make
 
 The build will only run the fast unit tests.
 
-In order to run the functional integration tests targeting containerized MySql, run
+In order to run the functional integration tests targeting containerized Mysql, run
 ```
 make integration-test
 ```
-Those will be much slower - they spawn the actual mysql instance using testcontainers-go and thus
+Those will be much slower - they spawn the actual Postgres and Mysql instances using testcontainers-go and thus
 require a running docker daemon on the host.
 
 And another round of slow tests that test for consistency in a distributed environment:
@@ -57,7 +57,7 @@ And another round of slow tests that test for consistency in a distributed envir
 make e2e-test
 ```
 Those will spawn a docker-composed environment with two service instances connected to
-a mysql container and a load balancer on top. Tests will be executed against the load balancer,
+a Postgres container and a load balancer on top. Tests will be executed against the load balancer,
 simulating a distributed environment and asserting that the service can scale and remain consistent.
 
 
@@ -79,14 +79,14 @@ The same, but packaged in a docker container:
 make docker-run
 ```
 
-Alternatively, two instances packaged in a docker container, connected to a mysql container and
+Alternatively, two instances packaged in a docker container, connected to a Postgres container and
 exposed via Envoy Proxy load balancer using:
 ```
 make compose-run
 ```
 This time the service will also be accessible on localhost:8080, just that this time requests
 will go via a load balancer to two service instances in a round robin fashion and with a shared
-mysql database.
+Postgres database.
 
 ### Monitoring
 
