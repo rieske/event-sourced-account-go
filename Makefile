@@ -28,5 +28,7 @@ clean:
 	rm -f $(BINARY_NAME) coverage.out coverage.json
 run: build
 	./$(BINARY_NAME)
+coverage-report: test
+	sed -i '' 's/^github.com\/rieske\/event-sourced-account-go\///g' coverage.out'
 
 .PHONY: all test clean
