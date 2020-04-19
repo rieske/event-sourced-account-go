@@ -1,6 +1,8 @@
 ## Event Sourced Account
 
 [![Actions Status](https://github.com/rieske/event-sourced-account-go/workflows/build/badge.svg)](https://github.com/rieske/event-sourced-account-go/actions)
+[![Maintainability](https://api.codeclimate.com/v1/badges/5de8dfb6d11bb9bbc1b2/maintainability)](https://codeclimate.com/github/rieske/event-sourced-account-go/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/5de8dfb6d11bb9bbc1b2/test_coverage)](https://codeclimate.com/github/rieske/event-sourced-account-go/test_coverage)
 
 Event sourced Account implementation in go.
 
@@ -88,7 +90,7 @@ mysql database.
 
 ### Monitoring
 
-Basic metrics are exposed to Prometheus and sample configuration of Prometheus together with 
+Basic metrics are exposed to Prometheus and sample configuration of Prometheus together with
 Grafana and a service/envoy dashboards can be accessed by spawning a composed environment using
 ```
 make compose-run
