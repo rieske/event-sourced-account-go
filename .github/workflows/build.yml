@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.14.1
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.14.1
         id: go
@@ -28,4 +28,4 @@ jobs:
           CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
         with:
           coverageCommand: make coverage-report
-          coverageLocations: "coverage.json:gcov"
+          coverageLocations: "coverage.json:gocov"
