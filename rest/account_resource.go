@@ -115,11 +115,8 @@ func (r *accountResource) deposit(ctx context.Context, id account.ID, query url.
 		return *response
 	}
 
-	if err := r.accountService.Deposit(ctx, id, txId, amount); err != nil {
-		return handleDomainError(err)
-	}
-
-	return noContentResponse()
+	err := r.accountService.Deposit(ctx, id, txId, amount)
+	return respond(noContentResponse, err)
 }
 
 func (r *accountResource) withdraw(ctx context.Context, id account.ID, query url.Values) response {
@@ -132,19 +129,13 @@ func (r *accountResource) withdraw(ctx context.Context, id account.ID, query url
 		return *response
 	}
 
-	if err := r.accountService.Withdraw(ctx, id, txId, amount); err != nil {
-		return handleDomainError(err)
-	}
-
-	return noContentResponse()
+	err := r.accountService.Withdraw(ctx, id, txId, amount)
+	return respond(noContentResponse, err)
 }
 
 func (r *accountResource) delete(ctx context.Context, id account.ID) response {
-	if err := r.accountService.CloseAccount(ctx, id); err != nil {
-		return handleDomainError(err)
-	}
-
-	return response{status: http.StatusNoContent}
+	err := r.accountService.CloseAccount(ctx, id)
+	return respond(noContentResponse, err)
 }
 
 func (r *accountResource) transfer(ctx context.Context, sourceAccountId account.ID, query url.Values) response {
@@ -161,11 +152,15 @@ func (r *accountResource) transfer(ctx context.Context, sourceAccountId account.
 		return *response
 	}
 
-	if err := r.accountService.Transfer(ctx, sourceAccountId, account.ID{targetAccountId}, txId, amount); err != nil {
+	err := r.accountService.Transfer(ctx, sourceAccountId, account.ID{targetAccountId}, txId, amount)
+	return respond(noContentResponse, err)
+}
+
+func respond(responseProvider func() response, err error) response {
+	if err != nil {
 		return handleDomainError(err)
 	}
-
-	return noContentResponse()
+	return responseProvider()
 }
 
 func handleDomainError(err error) response {
