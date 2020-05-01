@@ -4,18 +4,19 @@ import (
 	"database/sql"
 	_ "expvar"
 	"fmt"
-	zipkinsql "github.com/jcchavezs/zipkin-instrumentation-sql"
-	"github.com/openzipkin/zipkin-go"
-	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
-	"github.com/openzipkin/zipkin-go/reporter"
-	zipkinreporter "github.com/openzipkin/zipkin-go/reporter/http"
-	"github.com/rieske/event-sourced-account-go/eventstore/postgres"
 	"io"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"time"
+
+	zipkinsql "github.com/jcchavezs/zipkin-instrumentation-sql"
+	"github.com/openzipkin/zipkin-go"
+	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
+	"github.com/openzipkin/zipkin-go/reporter"
+	zipkinreporter "github.com/openzipkin/zipkin-go/reporter/http"
+	"github.com/rieske/event-sourced-account-go/eventstore/postgres"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -46,12 +47,14 @@ var (
 	})
 )
 
+type handlerDecorator func(http.Handler) http.Handler
+
 func noTracingHttpHandler(h http.Handler) http.Handler {
 	return h
 }
 
 func main() {
-	var tracingHandler func(http.Handler) http.Handler
+	var tracingHandler handlerDecorator
 	var rep reporter.Reporter
 
 	if zipkinURL, ok := os.LookupEnv("ZIPKIN_URL"); ok {
@@ -116,6 +119,10 @@ func main() {
 		tracingHandler = noTracingHttpHandler
 	}
 
+	startServer(tracingHandler, eventStore)
+}
+
+func startServer(tracingHandler handlerDecorator, eventStore eventsourcing.EventStore) {
 	shutdown := make(chan bool)
 	http.Handle("/prometheus", promhttp.Handler())
 	go func() {
