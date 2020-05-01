@@ -49,6 +49,8 @@ var (
 
 type handlerDecorator func(http.Handler) http.Handler
 
+type schemaMigrator func(db *sql.DB, schemaLocation string)
+
 func noTracingHttpHandler(h http.Handler) http.Handler {
 	return h
 }
@@ -78,18 +80,8 @@ func main() {
 		)
 		driverName := "postgres"
 		tracingHandler, driverName = buildTracingHandler(driverName, rep)
-
-		db, err := sql.Open(driverName, psqlInfo)
+		db := initDB(driverName, psqlInfo, "infrastructure/schema/postgres", postgres.MigrateSchema)
 		defer closeResource(db)
-		if err != nil {
-			log.Panic(err)
-		}
-		db.SetMaxOpenConns(5)
-		db.SetMaxIdleConns(5)
-		waitForDBConnection(db)
-		postgres.MigrateSchema(db, "infrastructure/schema/postgres")
-
-		dbMetrics(db)
 
 		sqlStore := postgres.NewEventStore(db)
 		log.Println("Using postgres event store")
@@ -97,18 +89,8 @@ func main() {
 	} else if mysqlURL, ok := os.LookupEnv("MYSQL_URL"); ok {
 		driverName := "mysql"
 		tracingHandler, driverName = buildTracingHandler(driverName, rep)
-
-		db, err := sql.Open(driverName, mysqlURL)
+		db := initDB(driverName, mysqlURL, "infrastructure/schema/mysql", mysql.MigrateSchema)
 		defer closeResource(db)
-		if err != nil {
-			log.Panic(err)
-		}
-		db.SetMaxOpenConns(5)
-		db.SetMaxIdleConns(5)
-		waitForDBConnection(db)
-		mysql.MigrateSchema(db, "infrastructure/schema/mysql")
-
-		dbMetrics(db)
 
 		sqlStore := mysql.NewEventStore(db)
 		log.Println("Using mysql event store")
@@ -120,6 +102,21 @@ func main() {
 	}
 
 	startServer(tracingHandler, eventStore)
+}
+
+func initDB(driverName, url, schemaLocation string, migrator schemaMigrator) *sql.DB {
+	db, err := sql.Open(driverName, url)
+	if err != nil {
+		log.Panic(err)
+	}
+	db.SetMaxOpenConns(5)
+	db.SetMaxIdleConns(5)
+	waitForDBConnection(db)
+	migrator(db, schemaLocation)
+
+	dbMetrics(db)
+
+	return db
 }
 
 func startServer(tracingHandler handlerDecorator, eventStore eventsourcing.EventStore) {
