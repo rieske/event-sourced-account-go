@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 )
@@ -23,21 +24,22 @@ const (
 	AccountClosed
 )
 
-func eventTypeAlias(event account.Event) (int, error) {
+func eventTypeAlias(event account.Event) (alias int, err error) {
 	switch t := event.(type) {
 	case account.Snapshot:
-		return Snapshot, nil
+		alias = Snapshot
 	case account.AccountOpenedEvent:
-		return AccountOpened, nil
+		alias = AccountOpened
 	case account.MoneyDepositedEvent:
-		return MoneyDeposited, nil
+		alias = MoneyDeposited
 	case account.MoneyWithdrawnEvent:
-		return MoneyWithdrawn, nil
+		alias = MoneyWithdrawn
 	case account.AccountClosedEvent:
-		return AccountClosed, nil
+		alias = AccountClosed
 	default:
-		return 0, errors.New(fmt.Sprintf("don't know how to alias %T", t))
+		err = errors.New(fmt.Sprintf("don't know how to alias %T", t))
 	}
+	return
 }
 
 func (s jsonEventSerializer) SerializeEvent(e eventstore.SequencedEvent) (event eventstore.SerializedEvent, err error) {
@@ -59,29 +61,30 @@ func (s jsonEventSerializer) DeserializeEvent(se eventstore.SerializedEvent) (ev
 	return
 }
 
-func deserializeJsonEvent(payload []byte, typeAlias int) (account.Event, error) {
+func deserializeJsonEvent(payload []byte, typeAlias int) (event account.Event, err error) {
 	switch typeAlias {
 	case Snapshot:
-		var event account.Snapshot
-		err := json.Unmarshal(payload, &event)
-		return event, err
+		var e account.Snapshot
+		err = json.Unmarshal(payload, &e)
+		event = e
 	case AccountOpened:
-		var event account.AccountOpenedEvent
-		err := json.Unmarshal(payload, &event)
-		return event, err
+		var e account.AccountOpenedEvent
+		err = json.Unmarshal(payload, &e)
+		event = e
 	case MoneyDeposited:
-		var event account.MoneyDepositedEvent
-		err := json.Unmarshal(payload, &event)
-		return event, err
+		var e account.MoneyDepositedEvent
+		err = json.Unmarshal(payload, &e)
+		event = e
 	case MoneyWithdrawn:
-		var event account.MoneyWithdrawnEvent
-		err := json.Unmarshal(payload, &event)
-		return event, err
+		var e account.MoneyWithdrawnEvent
+		err = json.Unmarshal(payload, &e)
+		event = e
 	case AccountClosed:
-		var event account.AccountClosedEvent
-		err := json.Unmarshal(payload, &event)
-		return event, err
+		var e account.AccountClosedEvent
+		err = json.Unmarshal(payload, &e)
+		event = e
 	default:
-		return nil, errors.New(fmt.Sprintf("Don't know how to deserialize event with type alias %v", typeAlias))
+		err = errors.New(fmt.Sprintf("Don't know how to deserialize event with type alias %v", typeAlias))
 	}
+	return
 }

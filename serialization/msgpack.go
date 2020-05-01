@@ -3,6 +3,7 @@ package serialization
 import (
 	"errors"
 	"fmt"
+
 	"github.com/rieske/event-sourced-account-go/account"
 	"github.com/rieske/event-sourced-account-go/eventstore"
 	"github.com/vmihailenco/msgpack/v4"
@@ -34,29 +35,30 @@ func (s msgpackEventSerializer) DeserializeEvent(se eventstore.SerializedEvent) 
 	return
 }
 
-func deserializeMsgpackEvent(payload []byte, typeAlias int) (account.Event, error) {
+func deserializeMsgpackEvent(payload []byte, typeAlias int) (event account.Event, err error) {
 	switch typeAlias {
 	case Snapshot:
-		var event account.Snapshot
-		err := msgpack.Unmarshal(payload, &event)
-		return event, err
+		var e account.Snapshot
+		err = msgpack.Unmarshal(payload, &e)
+		event = e
 	case AccountOpened:
-		var event account.AccountOpenedEvent
-		err := msgpack.Unmarshal(payload, &event)
-		return event, err
+		var e account.AccountOpenedEvent
+		err = msgpack.Unmarshal(payload, &e)
+		event = e
 	case MoneyDeposited:
-		var event account.MoneyDepositedEvent
-		err := msgpack.Unmarshal(payload, &event)
-		return event, err
+		var e account.MoneyDepositedEvent
+		err = msgpack.Unmarshal(payload, &e)
+		event = e
 	case MoneyWithdrawn:
-		var event account.MoneyWithdrawnEvent
-		err := msgpack.Unmarshal(payload, &event)
-		return event, err
+		var e account.MoneyWithdrawnEvent
+		err = msgpack.Unmarshal(payload, &e)
+		event = e
 	case AccountClosed:
-		var event account.AccountClosedEvent
-		err := msgpack.Unmarshal(payload, &event)
-		return event, err
+		var e account.AccountClosedEvent
+		err = msgpack.Unmarshal(payload, &e)
+		event = e
 	default:
-		return nil, errors.New(fmt.Sprintf("Don't know how to deserialize event with type alias %v", typeAlias))
+		err = errors.New(fmt.Sprintf("Don't know how to deserialize event with type alias %v", typeAlias))
 	}
+	return
 }
