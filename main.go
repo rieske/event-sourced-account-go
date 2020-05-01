@@ -23,7 +23,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rieske/event-sourced-account-go/eventsourcing"
 	"github.com/rieske/event-sourced-account-go/eventstore"
-	"github.com/rieske/event-sourced-account-go/eventstore/mysql"
 	"github.com/rieske/event-sourced-account-go/rest"
 	"github.com/rieske/event-sourced-account-go/serialization"
 )
@@ -85,15 +84,6 @@ func main() {
 
 		sqlStore := postgres.NewEventStore(db)
 		log.Println("Using postgres event store")
-		eventStore = eventstore.NewSerializingEventStore(sqlStore, serialization.NewMsgpackEventSerializer())
-	} else if mysqlURL, ok := os.LookupEnv("MYSQL_URL"); ok {
-		driverName := "mysql"
-		tracingHandler, driverName = buildTracingHandler(driverName, rep)
-		db := initDB(driverName, mysqlURL, "infrastructure/schema/mysql", mysql.MigrateSchema)
-		defer closeResource(db)
-
-		sqlStore := mysql.NewEventStore(db)
-		log.Println("Using mysql event store")
 		eventStore = eventstore.NewSerializingEventStore(sqlStore, serialization.NewMsgpackEventSerializer())
 	} else {
 		log.Println("Using in-memory event store")
