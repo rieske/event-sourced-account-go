@@ -16,6 +16,32 @@ func NewMsgpackEventSerializer() *msgpackEventSerializer {
 	return &msgpackEventSerializer{}
 }
 
+const (
+	Snapshot = iota + 1
+	AccountOpened
+	MoneyDeposited
+	MoneyWithdrawn
+	AccountClosed
+)
+
+func eventTypeAlias(event account.Event) (alias int, err error) {
+	switch t := event.(type) {
+	case account.Snapshot:
+		alias = Snapshot
+	case account.AccountOpenedEvent:
+		alias = AccountOpened
+	case account.MoneyDepositedEvent:
+		alias = MoneyDeposited
+	case account.MoneyWithdrawnEvent:
+		alias = MoneyWithdrawn
+	case account.AccountClosedEvent:
+		alias = AccountClosed
+	default:
+		err = errors.New(fmt.Sprintf("don't know how to alias %T", t))
+	}
+	return
+}
+
 func (s msgpackEventSerializer) SerializeEvent(e eventstore.SequencedEvent) (event eventstore.SerializedEvent, err error) {
 	event.AggregateId = e.AggregateId
 	event.Seq = e.Seq
