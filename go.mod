@@ -3,7 +3,7 @@ module github.com/rieske/event-sourced-account-go
 go 1.14
 
 require (
-	github.com/golang-migrate/migrate/v4 v4.11.0
+	github.com/golang-migrate/migrate/v4 v4.12.1
 	github.com/google/uuid v1.1.1
 	github.com/jcchavezs/zipkin-instrumentation-sql v0.0.0-20190711180338-db34ed6aaa00
 	github.com/lib/pq v1.7.1
