@@ -23,7 +23,7 @@ jobs:
       - name: End to end test
         run: make e2e-test
       - name: Upload code coverage report to codeclimate
-        uses: paambaati/codeclimate-action@v2.7.5
+        uses: paambaati/codeclimate-action@v3.0.0
         env:
           CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
         with:
