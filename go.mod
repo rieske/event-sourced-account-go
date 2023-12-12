@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.16.2
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/jcchavezs/zipkin-instrumentation-sql v0.0.0-20200329175448-296145ac5ab7
 	github.com/lib/pq v1.10.9
 	github.com/openzipkin/zipkin-go v0.4.2
