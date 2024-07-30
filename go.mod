@@ -11,7 +11,7 @@ require (
 	github.com/prometheus/client_golang v1.19.1
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.32.0
-	github.com/vmihailenco/msgpack/v4 v4.3.13
+	github.com/vmihailenco/msgpack/v5 v5.4.1
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 )
 
