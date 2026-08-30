@@ -9,7 +9,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/openzipkin/zipkin-go v0.4.3
 	github.com/prometheus/client_golang v1.19.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.32.0
 	github.com/vmihailenco/msgpack/v4 v4.3.13
 	github.com/vmihailenco/msgpack/v5 v5.4.1
@@ -77,6 +77,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/mod v0.16.0 // indirect
